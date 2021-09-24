@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}{{ kind.capitalize() }} Search{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <form method="post">
+    <label for="search">Search {{ kind.capitalize() }}</label>
+    <input name="search" id="search" value="{{ request.form['search'] }}" required>
+  </form>
+  {% for result in results %}
+  <a href='{{ url_for("stats.item", kind=kind, id=result["id"]) }}'>
+    <article class="post">
+      <header>
+        <h1>{{ result['name'] }}</h1>
+      </header>
+      {% if result['images'][0] %}
+        <img class='searchPic' src="{{ result['images'][0]['url'] }}" />
+      {% endif %}
+    </article>
+  </a>
+  {% if not loop.last %}
+    <hr>
+  {% endif %}
+  {% endfor %}
+{% endblock %}

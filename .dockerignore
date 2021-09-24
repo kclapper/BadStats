@@ -1,0 +1,6 @@
+instance/
+venv/
+.env
+.gitignore
+LICENSE
+start.sh

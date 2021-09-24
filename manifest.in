@@ -1,0 +1,4 @@
+include badstats/schema.sql
+graft badstats/static
+graft badstats/templates
+global-exclude *.pyc

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  {% if stats['images'][0] %}
+    <img class='searchPic' 
+      style='
+        padding-top: 5px; 
+        padding-bottom: 5px; 
+        padding-right: 5px;' 
+      src="{{ stats['images'][0]['url'] }}" />
+  {% endif %}
+  <h1 style='padding-left: 5px; margin-top: auto; margin-bottom: auto;'>{% block title %}{{ stats['name'] }}{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+
+  <article class='post'>
+    <header>
+      <h1>Artists</h1>
+    </header>
+      <ol>
+      {% for artist in stats['artists'] %}
+        <li><a href="{{ url_for('stats.item', kind='artist', id=artist['id']) }}">
+            {{ artist['name'] }}
+        </a></li>
+      {% endfor %}
+      </ol>
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Album</h1>
+    </header>
+    <a href="{{ url_for('stats.item', kind='album', id=stats['album']['id']) }}">
+    {{ stats['album']['name'] }}
+    </a>
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Popularity</h1>
+    </header>
+    {{ stats['popularity'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Explicit</h1>
+    </header>
+    {{ stats['explicit'] }}
+  </article>
+  <hr>  
+
+  <article class='post'>
+    <header>
+      <h1>Duration (ms)</h1>
+    </header>
+    {{ stats['duration_ms'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Danceability</h1>
+    </header>
+    {{ stats['danceability'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Energy</h1>
+    </header>
+    {{ stats['energy'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Key</h1>
+    </header>
+    {{ stats['key'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Loudness</h1>
+    </header>
+    {{ stats['loudness'] }} LUFS
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Mode</h1>
+    </header>
+    {{ stats['mode'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Speechiness</h1>
+    </header>
+    {{ stats['speechiness'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Acousticness</h1>
+    </header>
+    {{ stats['acousticness'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Instrumentalness</h1>
+    </header>
+    {{ stats['instrumentalness'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Liveness</h1>
+    </header>
+    {{ stats['liveness'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Valence</h1>
+    </header>
+    {{ stats['valence'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>tempo</h1>
+    </header>
+    {{ stats['tempo'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Time Signature</h1>
+    </header>
+    {{ stats['time_signature'] }}
+  </article>
+  <hr>
+
+{% endblock %}

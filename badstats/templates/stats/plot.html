@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1 style='padding-left: 5px; margin-top: auto; margin-bottom: auto;'>{% block title %}{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+
+<img src="data:image/png;base64,{{ result }}" />
+
+{% endblock %}
+

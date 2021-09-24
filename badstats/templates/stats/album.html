@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  {% if stats['images'][0] %}
+    <img class='searchPic' 
+      style='
+        padding-top: 5px; 
+        padding-bottom: 5px; 
+        padding-right: 5px;' 
+      src="{{ stats['images'][0]['url'] }}" />
+  {% endif %}
+  <h1 style='padding-left: 5px; margin-top: auto; margin-bottom: auto;'>{% block title %}{{ stats['name'] }}{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+
+  <article class='post'>
+    <header>
+      <h1>Genre</h1>
+    </header>
+    {% for genre in stats['genres'] %}
+      {{ genre }}, 
+    {% endfor %}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Release Date</h1>
+    </header>
+    {{ stats['release_date'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Popularity</h1>
+    </header>
+    {{ stats['popularity'] }}
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Tracks</h1>
+    </header>
+      <ol>
+      {% for track in stats['tracks'] %}
+        <li><a href="{{ url_for('stats.item', kind='song', id=track['id']) }}">
+          {{ track['name'] }}
+        </a></li>
+      {% endfor %}
+      </ol>
+  </article>
+  <hr>
+
+  <article class='post'>
+    <header>
+      <h1>Album Plots</h1>
+    </header>
+    <a href="{{ url_for('stats.plotPNG', kind='popularity', id=stats['id']) }}" >Popularity Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='danceability', id=stats['id']) }}" >Danceability Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='duration_ms', id=stats['id']) }}" >Duration Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='energy', id=stats['id']) }}" >Energy Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='loudness', id=stats['id']) }}" >Loudness Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='speechiness', id=stats['id']) }}" >Speechiness Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='acousticness', id=stats['id']) }}" >Acousticness Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='instrumentalness', id=stats['id']) }}" >Instrumentalness Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='liveness', id=stats['id']) }}" >Liveness Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='valence', id=stats['id']) }}" >Valence Plot</a>
+    <br />
+    <a href="{{ url_for('stats.plotPNG', kind='tempo', id=stats['id']) }}" >Tempo Plot</a>
+
+  </article>
+  <hr>
+
+{% endblock %}
