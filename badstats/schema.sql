@@ -22,3 +22,9 @@ CREATE TABLE token (
   token TEXT NOT NULL,
   expires TEXT NOT NULL
 );
+
+CREATE TABLE csfr (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT NOT NULL,
+  created INTEGER NOT NULL,
+);

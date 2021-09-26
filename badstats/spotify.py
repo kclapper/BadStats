@@ -4,11 +4,14 @@ from datetime import datetime, timedelta
 from badstats.db import get_db
 
 class Spotify:
-    def __init__(self):
+    def __init__(self, code=None, state=None):
         ## Get Spotify credentials from environment variables and get access token
         self.id = os.environ["CLIENTID"]
         self.secret = os.environ["CLIENTSECRET"]
-        self.token = self.getToken()
+        if code and state:
+            self.token = self.getUserToken(code, state)
+        else:
+            self.token = self.getToken()
         
     def getToken(self):
             ## Get authentication token from Spotify 
