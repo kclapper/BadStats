@@ -1,19 +1,35 @@
-import json, requests, base64, os, re
+import json, requests, base64, os, re, logging
 from datetime import datetime, timedelta
+
+from flask import current_app
 
 from badstats.db import get_db
 
 class Spotify:
-    def __init__(self, code=None, state=None):
+    def __init__(self, code=None, url=None, sessionid=None):
         ## Get Spotify credentials from environment variables and get access token
         self.id = os.environ["CLIENTID"]
         self.secret = os.environ["CLIENTSECRET"]
-        if code and state:
-            self.token = self.getUserToken(code, state)
+        if code and url:
+            self.token = self.getAuthToken(code, url)
         else:
-            self.token = self.getToken()
+            self.token = self.getClientToken()
         
-    def getToken(self):
+    def tokenRequest(self, data):
+        ## Make token request for either client or auth token
+
+        ## Get base64 encoded spotify app ID and secret
+        secret = f'{self.id}:{self.secret}'
+        encodedSecret = str(base64.b64encode(secret.encode("utf-8")), "utf-8")
+
+        ## Make post request to ask for bearer token
+        headers = {
+        'Authorization': f'Basic {encodedSecret}'
+        }
+
+        return requests.post("https://accounts.spotify.com/api/token", data=data, headers=headers)
+
+    def getClientToken(self):
             ## Get authentication token from Spotify 
             ## Return token if authenticated, None if not.
 
@@ -22,18 +38,11 @@ class Spotify:
             if cachedToken:
                 return cachedToken
 
-            ## Get base64 encoded spotify app ID and secret
-            secret = f'{self.id}:{self.secret}'
-            encodedSecret = str(base64.b64encode(secret.encode("utf-8")), "utf-8")
-
             ## Make initial post request to ask for bearer token
-            headers = {
-            'Authorization': f'Basic {encodedSecret}'
-            }
             data = {
                 'grant_type': 'client_credentials'
             }
-            response = requests.post("https://accounts.spotify.com/api/token", data=data, headers=headers)
+            response = self.tokenRequest(data)
             
             if response.status_code >= 300:
                 return None
@@ -41,6 +50,25 @@ class Spotify:
             # Cache and return token
             self.cacheToken(response)
             return response.json()["access_token"]
+
+    def getAuthToken(self, code, url):
+        ## Get user authenticated token
+        ## Return token if authenticated, None if not.
+
+        data = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': url,
+        }
+        response = self.tokenRequest(data)
+
+        if response.status_code >= 300:
+            current_app.logger.warning("getAuthToken failed to get user auth token")
+            return None
+        
+        current_app.logger.debug("User authenticated token acquired")
+
+        return response.json()['access_token']
 
     def checkTokenCache(self):
         ## Check if we still have a valid token
@@ -84,7 +112,9 @@ class Spotify:
             params=params,
             )
         
-        if response.status_code >= 300:
+        if response.status_code >= 400:
+            current_app.logger.warning(f"API Query Error, status code {response.status_code}, message: {response.json()['error']['message']}")
+            current_app.logger.warning(f"API query url: {url}")
             return []
         
         return response.json()
@@ -274,3 +304,25 @@ class Spotify:
             }
 
         return tracks
+
+    def getUserPlaylists(self):
+        # Requires User Authorization. Instance must be instantiated with code and redirecturi.
+
+        url = "https://api.spotify.com/v1/me/playlists"
+
+        response = self.apiQuery(url)
+
+        if not response:
+            return {}
+
+        results = [{
+            'description': x['description'],
+            'id': x['id'],
+            'images': x['images'],
+            'name': x['name'],
+            'owner': x['owner']['display_name'],
+        } for x in response['items']]
+
+        current_app.logger.debug(results)
+
+        return results

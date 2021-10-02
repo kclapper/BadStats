@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Select a Playlist{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  {% for result in results %}
+    {% include 'stats/user/playlistListItem.html' with context %}
+  {% if not loop.last %}
+    <hr>
+  {% endif %}
+  {% endfor %}
+{% endblock %}

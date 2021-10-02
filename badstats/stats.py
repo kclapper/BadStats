@@ -1,12 +1,16 @@
 from flask import (
-    Blueprint, render_template, request, redirect, url_for
+    Blueprint, render_template, request, redirect, url_for, g, current_app
 )
 from werkzeug.exceptions import abort
+import logging
 
 from badstats.spotify import Spotify
+from badstats import getHostname
 import badstats.plot as plot
 
 bp = Blueprint('stats', __name__)
+
+# log = logging.getLogger('badstats')
 
 @bp.route('/')
 def index():
@@ -49,3 +53,22 @@ def plotPNG(kind, id):
         
     return render_template('stats/plot.html', result=fig_data.decode('utf-8'))
 
+@bp.route('/user/<kind>')
+def userItem(kind):
+
+    # Check the code query string is there
+    if "code" not in request.args:
+        return redirect(url_for('stats.index'))
+    code = request.args.get("code")
+
+    # The redirecturl is predictable based on kind
+    host = getHostname()
+    redirecturl = f"{host}{url_for('auth.receiveAuth', kind=kind)}"
+    current_app.logger.debug(f'userItem redirecturl: {redirecturl}')
+
+    spotify = Spotify(code=code, url=redirecturl)
+
+    results = spotify.getUserPlaylists()
+
+    return render_template("stats/user/playlistSelect.html", results=results)
+    

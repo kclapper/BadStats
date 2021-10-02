@@ -1,16 +1,29 @@
-import functools, os
+import functools, os, requests, logging
+from secrets import token_urlsafe
 from datetime import datetime, timedelta
 
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for
+    Blueprint, flash, g, redirect, render_template, request, session, url_for, current_app
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from badstats.db import get_db
-from spotify import Spotify
+from badstats import getHostname
+from badstats.spotify import Spotify
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+# log = logging.getLogger('badstats')
+
+def issueCsrf():
+    csrf = token_urlsafe()
+    db = get_db()
+    db.execute(
+        'INSERT INTO csrf (token, created) VALUES (?, ?);',
+        (csrf, datetime.utcnow().isoformat())
+    )
+    db.commit()
+    return csrf
 
 def isValid(csrf):
     # Return True if csrf is valid
@@ -22,9 +35,7 @@ def isValid(csrf):
 
     # Check if a matching csrf token is in the database
     db = get_db()
-    token = db.execute(
-        'SELECT * FROM csrf WHERE token = ?', csrf
-    ).fetchone()
+    token = db.execute("SELECT * FROM csrf WHERE token = ?", (csrf,)).fetchone()
 
     # If no token was found then the csrf token is invalid
     if not token:
@@ -36,34 +47,83 @@ def isValid(csrf):
 
     # If it's past it's expiration date, delete form database and return False
     if datetime.utcnow() >= tokenexpires:
-        db.execute('DELETE FROM csrf WHERE token = ?', csrf)
+        db.execute('DELETE FROM csrf WHERE token = ?', (csrf,))
         db.commit()
+        print("CSRF token expired, deleted token")
         return False
     
     return True
 
-@bp.route('/spotify/:kind/authorize', methods=('POST'))
-def userAuthorize(kind):
+@bp.route('/spotify/authorize/<kind>', methods=['POST', 'GET'])
+def userAuth(kind):
+
+    # Make sure it's a valid kind and set necessary authorization scope
+    if kind == "playlist":
+        scope = "playlist-read-private"
+    else:
+        # Only handling playlists right now
+        return redirect( url_for('stats.search', kind='artist', results=''))
+
+    if request.method == "GET":
+        return render_template("auth/user.html", kind=kind, csrf=issueCsrf())
+        
+
     # Make sure request has a valid csrf token
     csrf = request.form['csrf']
     if not isValid(csrf):
-        redirect( url_for('stats.search', kind='artist', results=''))
-
-    # Set necessary authorization scope
-    scope = request.form['scope']
+        print("CSRF not valid, redirecting to index")
+        return redirect( url_for('stats.search', kind='artist', results=''))
 
     # Determine redirect uri
-    if not os.environ['HOSTNAME']:
-        host = "localhost"
-    else:
-        host = os.environ['HOSTNAME']
-    redirecturi = f'{host}{url_for("stats.user", kind=kind)}'
+    redirecturi = f'{getHostname()}{url_for("auth.receiveAuth", kind=kind)}'
 
     # Get spotify api client id from environment variable
-    clientid = os.environ['CLIENTID']
+    client_id = os.environ['CLIENTID']
 
-    # Redirect to spotify authorization
+    # Always ask for authentication
+    show_dialog = 'true'
+
+    params = {
+        'client_id': client_id,
+        'scope': scope,
+        'redirect_uri': redirecturi,
+        'response_type': 'code',
+        'state': csrf,
+        'show_dialog': show_dialog,
+    }
+    url = "https://accounts.spotify.com/authorize"
     
+    # See if there's any errors by sending the request once first
+    response = requests.get(url, params=params)
+
+    if response.status_code >= 300:
+        current_app.logger.warning(f"Spotify user auth redirect error, status code: {response.status_code}")
+        current_app.logger.warning(response.json()['error'])
+        return redirect(url_for('stats.index'))
+    
+    # If no errors, redirect to that same url
+    req = requests.Request("GET", url, params=params).prepare()
+    return redirect(f'https://accounts.spotify.com{req.path_url}')
+    
+@bp.route('/spotify/receive/<kind>', methods=['GET'])
+def receiveAuth(kind):
+    # Redirect url from authorization request, receives code and state from spotify
+    # Validates the state then redirects to a view along with the code
+
+    # Send them back home if there was an error
+    if "error" in request.args:
+        current_app.logger.warning(f"Error on Spotify auth reception: {request.args['error']}")
+        return redirect(url_for('stats.index'))
+
+    # Redirect with the spotify api code to the route to actually
+    # Use the authenticated instance of spotify
+    state = request.args['state']
+    if isValid(state):
+        return redirect(url_for('stats.userItem', kind=kind, code=request.args.get('code')))
+
+    # Anything else means the csrf state was invalid
+    current_app.logger.warning(f"Invalid state: {state}")
+    return redirect(url_for('stats.index'))
 
 # @bp.before_app_request
 # def load_logged_in_user():
