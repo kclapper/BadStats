@@ -1,33 +1,4 @@
 ---
-kind: PersistentVolume
-apiVersion: v1
-metadata:
-  name: db-pv
-  namespace: badstats
-spec:
-  storageClassName: manual
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 5Gi
-  hostPath:
-    path: /data/badstats/db-pv/
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: db-pvc
-  namespace: badstats
-spec:
-  storageClassName: manual
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 4Gi
-
----
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -45,8 +16,8 @@ spec:
     spec:
       containers:
         - name: badstats
-          image: kpuc1997/badstats:latest
-          imagePullPolicy: Always
+          image: kpuc1997/badstats:1.0.0
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
               memory: "1000Mi"
@@ -89,24 +60,3 @@ spec:
       targetPort: 8080
   selector:
     app: badstats
-
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: badstats
-  namespace: badstats
-  annotations:
-    kubernetes.io/ingress.class: nginx
-spec:
-  rules:
-  - host: badstats.offtherailsradio.org
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: badstats
-            port:
-              number: 8080
