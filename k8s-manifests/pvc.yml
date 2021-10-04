@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-pvc
+  namespace: badstats
+  annotations:
+    nfs.io/storage-path: "/badstats"
+spec:
+  storageClassName: nfs-client # managed-nfs-storage # nfs-client
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 4Gi
