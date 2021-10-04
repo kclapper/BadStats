@@ -7,7 +7,6 @@
 {% block content %}
   <h2>Connect with Spotify to see stats on your own {{ kind }}!</h2>
   <form method="post">
-    <label for="auth">User {{ kind.capitalize() }}</label>
     <input type="submit" value="Connect">
     <input hidden="true" name="csrf" id="csrf" value="{{ csrf }}" required>
   </form>

@@ -7,7 +7,7 @@
     <li><a href="{{ url_for('stats.search', kind='artist', search='') }}">Artists</a>
     <li><a href="{{ url_for('stats.search', kind='album', search='') }}">Albums</a>
     <li><a href="{{ url_for('stats.search', kind='song', search='') }}">Songs</a>
-    <li><a href="{{ url_for('auth.userAuth', kind='playlist') }}">Playlist</a>
+    <li><a href="{{ url_for('stats.userPlaylists', kind='playlist') }}">Playlist</a>
   </ul>
 </nav>
 <section class="content">
@@ -19,3 +19,5 @@
   {% endfor %}
   {% block content %}{% endblock %}
 </section>
+<a href="{{ url_for('stats.tos') }}">Terms of Service</a>
+<a href="{{ url_for('stats.privacypolicy') }}">Privacy Policy</a>

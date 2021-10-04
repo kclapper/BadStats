@@ -2,6 +2,7 @@
 
 {% block header %}
   <h1>{% block title %}Select a Playlist{% endblock %}</h1>
+  <a href="{{ url_for('auth.disconnect')}}">Disconnect Spotify</a>
 {% endblock %}
 
 {% block content %}

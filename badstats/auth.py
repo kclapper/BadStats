@@ -119,11 +119,70 @@ def receiveAuth(kind):
     # Use the authenticated instance of spotify
     state = request.args['state']
     if isValid(state):
-        return redirect(url_for('stats.userItem', kind=kind, code=request.args.get('code')))
+        session['id'] = token_urlsafe()
+        session['created'] = datetime.utcnow().isoformat()
+
+        host = getHostname()
+        redirecturl = f"{host}{url_for('auth.receiveAuth', kind=kind)}"
+
+        Spotify(url=redirecturl, code=request.args.get('code'), sessionid=session['id'])
+
+        return redirect(url_for('stats.userPlaylists', kind=kind))
 
     # Anything else means the csrf state was invalid
     current_app.logger.warning(f"Invalid state: {state}")
     return redirect(url_for('stats.index'))
+
+def withValidSession(func):
+    @functools.wraps(func)
+    def withValidSession(*args, **kwargs):
+        
+        def handlePop(reason=None):
+            session.pop('id', None)
+            session.pop('created', None)
+            current_app.logger.debug("Popped session")
+            current_app.logger.debug(f"Popped for {reason}")
+        
+        session_created = session.get('created')
+        
+        if session_created is None:
+            return redirect(url_for('auth.userAuth', kind='playlist'))
+        
+        expires = datetime.fromisoformat(session_created) + timedelta(minutes=30)
+        
+        if datetime.utcnow() >= expires:
+            handlePop()
+            return redirect(url_for('auth.userAuth', kind='playlist'))
+
+        if datetime.fromisoformat(session_created) > datetime.utcnow():
+            handlePop()
+            return redirect(url_for('auth.userAuth', kind='playlist'))
+
+        db = get_db()
+
+        sessionid = db.execute("SELECT sessionid FROM token WHERE sessionid=?", (session.get('id'),)).fetchone()
+        if sessionid is None:
+            handlePop()
+            return redirect(url_for('auth.userAuth', kind='playlist'))
+
+        return func(*args, **kwargs)
+    return withValidSession
+
+@bp.route('/disconnect')
+@withValidSession
+def disconnect():
+
+    db = get_db()
+    db.execute("DELETE FROM token WHERE sessionid=?", (session['id'],))
+    db.commit()
+
+    session.pop('id', None)
+    session.pop('created', None)
+
+    return redirect( url_for('stats.index') )
+
+
+
 
 # @bp.before_app_request
 # def load_logged_in_user():

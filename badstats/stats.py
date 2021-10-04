@@ -1,20 +1,29 @@
 from flask import (
-    Blueprint, render_template, request, redirect, url_for, g, current_app
+    Blueprint, render_template, request, redirect, url_for, g, current_app, session
 )
 from werkzeug.exceptions import abort
 import logging
+from datetime import datetime, timedelta
+from badstats.db import get_db
 
 from badstats.spotify import Spotify
 from badstats import getHostname
 import badstats.plot as plot
+from badstats.auth import withValidSession
 
 bp = Blueprint('stats', __name__)
-
-# log = logging.getLogger('badstats')
 
 @bp.route('/')
 def index():
     return redirect( url_for('stats.search', kind='artist', results=''))
+
+@bp.route('/termsofservice')
+def tos():
+    return render_template('stats/tos.html')
+
+@bp.route('/privacypolicy')
+def privacypolicy():
+    return render_template('stats/privacypolicy.html')
 
 @bp.route('/search/<kind>', methods=['GET', 'POST'])
 def search(kind):
@@ -53,22 +62,45 @@ def plotPNG(kind, id):
         
     return render_template('stats/plot.html', result=fig_data.decode('utf-8'))
 
+
+
 @bp.route('/user/<kind>')
-def userItem(kind):
+@withValidSession
+def userPlaylists(kind):
 
-    # Check the code query string is there
-    if "code" not in request.args:
-        return redirect(url_for('stats.index'))
-    code = request.args.get("code")
-
-    # The redirecturl is predictable based on kind
-    host = getHostname()
-    redirecturl = f"{host}{url_for('auth.receiveAuth', kind=kind)}"
-    current_app.logger.debug(f'userItem redirecturl: {redirecturl}')
-
-    spotify = Spotify(code=code, url=redirecturl)
+    spotify = Spotify(sessionid=session['id'])
 
     results = spotify.getUserPlaylists()
 
     return render_template("stats/user/playlistSelect.html", results=results)
+
+@bp.route('/user/<kind>/<id>')
+@withValidSession
+def userItem(kind, id):
+    spotify = Spotify(sessionid=session['id'])
+
+    if kind == "playlist":
+        results = spotify.getPlaylist(id)
+
+    return render_template(f'stats/user/{kind}.html', stats=results)
+
+@bp.route('/user/playlist/<id>/plot/<kind>')
+@withValidSession
+def userPlaylistPlot(id, kind):
+    spotify = Spotify(sessionid=session['id'])
+
+    results = spotify.getPlaylist(id)
+    tracks = []
+    for track in results['tracks']:
+        trackstats = spotify.song(track['id'])
+        tracks.append({
+            'name': trackstats['name'],
+            kind: trackstats[kind]
+        })
+    
+    fig_data = plot.playlist(kind, tracks, results['name'])
+
+
+
+    return render_template(f'stats/user/playlistPlot.html', result=fig_data.decode('utf-8'))
     
