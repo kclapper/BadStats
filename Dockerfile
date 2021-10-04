@@ -3,13 +3,9 @@ FROM python:3
 WORKDIR /usr/src/app
 
 COPY badstats/ badstats/
-COPY manifest.in .
-COPY setup.py .
-COPY requirements.txt .
+COPY requirements-prod.txt .
 
-RUN pip install -r requirements.txt
-
-RUN pip install waitress
+RUN pip install -r requirements-prod.txt
 
 # Expects three environment variables:
 # CLIENTID - for Spotify

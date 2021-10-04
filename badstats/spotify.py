@@ -1,16 +1,39 @@
-import json, requests, base64, os, re
+import json, requests, base64, os, re, logging
 from datetime import datetime, timedelta
+
+from flask import current_app
 
 from badstats.db import get_db
 
 class Spotify:
-    def __init__(self):
+    def __init__(self, code=None, url=None, sessionid=None):
         ## Get Spotify credentials from environment variables and get access token
         self.id = os.environ["CLIENTID"]
         self.secret = os.environ["CLIENTSECRET"]
-        self.token = self.getToken()
+        if code and url and sessionid:
+            self.token = self.generateAuthToken(code, url, sessionid)
+        elif sessionid:
+            self.token = self.getAuthToken(sessionid)
+        elif code or url or sessionid:
+            current_app.logger.warning("Incomplete arguments given to Spotify(), running as client")
+        else:
+            self.token = self.getClientToken()
         
-    def getToken(self):
+    def tokenRequest(self, data):
+        ## Make token request for either client or auth token
+
+        ## Get base64 encoded spotify app ID and secret
+        secret = f'{self.id}:{self.secret}'
+        encodedSecret = str(base64.b64encode(secret.encode("utf-8")), "utf-8")
+
+        ## Make post request to ask for bearer token
+        headers = {
+        'Authorization': f'Basic {encodedSecret}'
+        }
+
+        return requests.post("https://accounts.spotify.com/api/token", data=data, headers=headers)
+
+    def getClientToken(self):
             ## Get authentication token from Spotify 
             ## Return token if authenticated, None if not.
 
@@ -19,18 +42,11 @@ class Spotify:
             if cachedToken:
                 return cachedToken
 
-            ## Get base64 encoded spotify app ID and secret
-            secret = f'{self.id}:{self.secret}'
-            encodedSecret = str(base64.b64encode(secret.encode("utf-8")), "utf-8")
-
             ## Make initial post request to ask for bearer token
-            headers = {
-            'Authorization': f'Basic {encodedSecret}'
-            }
             data = {
                 'grant_type': 'client_credentials'
             }
-            response = requests.post("https://accounts.spotify.com/api/token", data=data, headers=headers)
+            response = self.tokenRequest(data)
             
             if response.status_code >= 300:
                 return None
@@ -38,37 +54,113 @@ class Spotify:
             # Cache and return token
             self.cacheToken(response)
             return response.json()["access_token"]
+    
+    def generateAuthToken(self, code, url, sessionid):
+        ## Get user authenticated token
+        ## Stores the token in the database for session based auth
 
-    def checkTokenCache(self):
+        data = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': url,
+        }
+        response = self.tokenRequest(data)
+
+        if response.status_code >= 300:
+            current_app.logger.warning("getAuthToken failed to get user auth token")
+            return None
+        
+        current_app.logger.debug("User authenticated token acquired")
+
+        self.cacheToken(response, sessionid)
+        
+        return self.getAuthToken(sessionid)
+        # return response.json()['access_token']
+
+    def getAuthToken(self, sessionid):
+
+        cachedToken = self.checkTokenCache(sessionid)
+        if cachedToken:
+            return cachedToken
+        
+        db = get_db()
+
+        token = db.execute('SELECT * FROM token WHERE sessionid=(?)', (sessionid,)).fetchone()
+
+        ## Make post request to ask for new token
+        data = {
+            'grant_type': 'refresh_token',
+            'refresh_token': token['refresh']
+        }
+        response = self.tokenRequest(data)
+        
+        if response.status_code >= 300:
+            current_app.logger.warning("Token refresh failed!")
+            return None
+        
+        expires = self.expires(response)
+        response = response.json()
+        
+        db.execute("UPDATE token SET token=?, expires=?, refresh=?", 
+                    (response['access_token'], expires, token['refresh'])
+        )
+        db.commit()
+
+        return response['access_token']
+    
+    @staticmethod
+    def expires(response):
+        dateformatstring = '%a, %d %b %Y %H:%M:%S %Z'
+        expires = datetime.strptime(response.headers['date'], dateformatstring) \
+                        + timedelta(seconds=response.json()["expires_in"]) 
+        return expires
+
+    def checkTokenCache(self, sessionid=None):
         ## Check if we still have a valid token
         ## Return token if we do, False if we don't
         
         ## Get token file from db
         db = get_db()
-        token = db.execute('SELECT * FROM token').fetchone()
+
+        if sessionid:
+            token = db.execute('SELECT * FROM token WHERE sessionid=(?)', (sessionid,)).fetchone()
+        else:
+            token = db.execute('SELECT * FROM token WHERE token_type="client"').fetchone()
+        
         if token is None:
             return False
         elif datetime.utcnow() >= datetime.fromisoformat(token["expires"]):
-            db.execute('DELETE FROM token')
+            if token['token_type'] == 'auth': # Don't delete the token if it's an auth token, we need to refresh it instead
+                return False
+            db.execute('DELETE FROM token WHERE id=(?)', (token['id'],))
             db.commit()
             return False
         else:
             return token['token']
 
-    def cacheToken(self, response):
+    def cacheToken(self, response, sessionid=None):
         ## Cache token to file in db
-        dateformatstring = '%a, %d %b %Y %H:%M:%S %Z'
-        expires = datetime.strptime(response.headers['date'], dateformatstring) \
-                        + timedelta(seconds=response.json()["expires_in"]) 
+        
+        expires = self.expires(response)
+        
         token = response.json()["access_token"]
+        
+        if 'refresh_token' in response.json():
+            refresh_token = response.json()['refresh_token']
+            token_type = "auth"
+        else:
+            refresh_token = None
+            token_type = "client"
         
         db = get_db()
         db.execute(
-                'INSERT INTO token (token, expires)'
-                ' VALUES (?, ?)',
-                (token, expires)
+                'INSERT INTO token (token, expires, refresh, token_type, sessionid)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                (token, expires, refresh_token, token_type, sessionid)
             )
         db.commit()
+
+        return
 
     def apiQuery(self, url, params=None):
         # Format and send request
@@ -81,7 +173,9 @@ class Spotify:
             params=params,
             )
         
-        if response.status_code >= 300:
+        if response.status_code >= 400:
+            current_app.logger.warning(f"API Query Error, status code {response.status_code}, message: {response.json()['error']['message']}")
+            current_app.logger.warning(f"API query url: {url}")
             return []
         
         return response.json()
@@ -271,3 +365,63 @@ class Spotify:
             }
 
         return tracks
+
+    def getUserPlaylists(self):
+        # Requires User Authorization. Instance must be instantiated with code and redirecturi.
+
+        url = "https://api.spotify.com/v1/me/playlists"
+
+        response = self.apiQuery(url)
+
+        if not response:
+            return {}
+
+        results = [{
+            'description': x['description'],
+            'id': x['id'],
+            'images': x['images'],
+            'name': x['name'],
+            'owner': x['owner']['display_name'],
+        } for x in response['items']]
+
+        current_app.logger.debug(results)
+
+        return results
+
+    def getPlaylist(self, id):
+
+        url = f"https://api.spotify.com/v1/playlists/{id}"
+
+        response = self.apiQuery(url)
+
+        if not response:
+            return {}
+
+        results = {
+            'description': response['description'],
+            'followers': response['followers']['total'],
+            'id': response['id'],
+            'images': response['images'],
+            'name': response['name'],
+            'owner': response['owner']['display_name'],
+            'public': response['public'],
+            'tracks': [
+                {
+                    'albumid': track['track']['album']['id'],
+                    'albumname': track['track']['album']['name'],
+                    'albumimages': track['track']['album']['images'],
+                    'artists': [
+                        {
+                            'id': artist['id'],
+                            'name': artist['name'],
+                        } for artist in track['track']['album']['artists']
+                    ],
+                    'id': track['track']['id'],
+                    'name': track['track']['name'],
+                    'popularity': track['track']['popularity'],
+                } 
+                for track in response['tracks']['items']
+            ]
+        }
+
+        return results
