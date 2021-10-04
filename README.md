@@ -21,7 +21,10 @@ to the root of the repository and run:
     python -m venv venv
 
 The project requires python 3, you may need to run `python3 -m venv venv` instead if you have python 2 installed
-as well.  
+as well.
+
+For local development, install the dev dependencies: `pip install -r requirements-dev.txt`. If you add or remove a package
+be sure to do it from both dev and prod requirements files.
 
 Activate the virtual environment by running `source ./venv/bin/activate`. On Windows its a little different: 
 `source ./venv/Scripts/activate` 
@@ -37,11 +40,14 @@ Tests aren't written yet. TBD.
 
 Badstats will run on a K8s cluster so the build process is all about creating a container image and pushing it to docker hub.
 
-First, if you've installed or removed any pip dependencies, you'll want to update the requirements.txt file because this is 
-what docker will use to build the container image (As a side note, it's worth investigating updating the requirements file by hand
-instead of using the following command):
+First, if you've installed or removed any pip dependencies, you'll want to make sure you updated the requirements-prod.txt file
+because this is what docker will use to build the container image. When you run the container image, if it gives odd errors, be
+cognizant of issues with dependencies. Since the build process may install newer versions of packages, there may be breaking changes
+that aren't reflected in your development environment. 
 
-    pip freeze >> requirements.txt
+Note: It's worth thinking about the dependency management process some more. Doing it by hand like I am means I'll get updated packages at every build and won't be frozen to certain versions, but that may have its own headaches. Using `pip freeze` would be
+easier but sticks me with exact versions of packages and potentially introduces outdated dependencies if a package no longer needs
+something that was added earlier.
 
 Since the Ki-Kluster runs arm64, the build process will generate images for amd64 and arm64. If you don't have a custom buildx
 builder yet you'll need one:
@@ -57,3 +63,10 @@ Then the build process is as follows:
 
 All deployment is handled by badstats.yml. Since the database doesn't need to store any long lived data, there isn't much
 concern wiping and recreating the persistent volume (other than possibly creating a bunch of useless files/folders).
+
+## TODO
+- [ ] Implement rate limiting backoff for spotify api queries
+- [ ] Add in memcached support. Easiest is to just add a container to the pod, not as robust but would work well enough for now.
+- [ ] Add tests
+- [ ] Add user authorization
+    - [ ] Add playlist analysis 

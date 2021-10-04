@@ -29,3 +29,21 @@ input[type=submit] { align-self: start; min-width: 10em; }
     height: 100px;
     width: 100px;
 }
+
+.playlistListItem {
+    display: flex;
+    flex-direction: row;
+}
+
+.playlistListItem > img {
+    height: 100px;
+    width: 100px;
+    padding-top: 5px; 
+    padding-bottom: 5px; 
+    padding-right: 10px;
+}
+
+.playlistListItem > div {
+    flex: auto;
+    margin: auto;
+}

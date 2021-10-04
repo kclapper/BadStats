@@ -143,3 +143,5 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+start.sh

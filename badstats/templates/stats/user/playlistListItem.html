@@ -1,0 +1,12 @@
+<article class='playlistListItem'>
+    {% if result['images'][0] %}
+        <img class='playlistThumbnail' src="{{ result['images'][0]['url'] }}" />
+    {% endif %}
+    <div class='playlistListText'>
+        <a href="{{ url_for('stats.userItem', kind='playlist', id=result['id']) }}">
+            <h2 class='playlistListTitle'>{{ result['name']|safe }}</h2>
+        </a>
+        <p class='playlistListDesc'>{{ result['description']|safe }}</p>
+    </div>
+</article>
+
