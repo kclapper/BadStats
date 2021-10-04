@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: badstats
-          image: kpuc1997/badstats:1.0.0
+          image: kpuc1997/badstats:1.1.0
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -25,6 +25,8 @@ spec:
           ports:
             - containerPort: 8080
           env:
+            - name: REDIRECT_HOSTNAME
+              value: "badstats.offtherailsradio.org"
             - name: CLIENTID
               valueFrom:
                 secretKeyRef:
