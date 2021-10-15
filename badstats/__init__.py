@@ -39,33 +39,8 @@ def create_app(test_config=None):
 
     return app
 
-# def init_logging():
-#     # Set logging as appropriate
-#     log = logging.Logger(__name__)
-
-#     # create console handler and set level to debug
-#     ch = logging.StreamHandler()
-#     ch.setLevel(logging.DEBUG)
-
-#     # create formatter
-#     formatter = logging.Formatter('%(levelname)s:%(name)s: %(message)s')
-
-#     # add formatter to ch
-#     ch.setFormatter(formatter)
-
-#     # add ch to logger
-#     log.addHandler(ch)
-
-#     if os.environ['FLASK_ENV'] == 'development':
-#         log.setLevel(logging.DEBUG)
-#         log.debug("Development environment detected, log level set to DEBUG")
-#     else:
-#         log.setLevel(logging.INFO)
-
-#     return log
-
 def getHostname():
-    if "HOSTNAME" not in os.environ:
+    if "REDIRECT_HOSTNAME" not in os.environ:
         host = "http://127.0.0.1:5000"
     else:
         host = os.environ['REDIRECT_HOSTNAME']
