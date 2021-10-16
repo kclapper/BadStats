@@ -16,20 +16,20 @@ spec:
     spec:
       containers:
         - name: badstats
-          image: kpuc1997/badstats:1.1.0
+          image: kpuc1997/badstats:1.1.1
           imagePullPolicy: IfNotPresent
           resources:
             limits:
-              memory: "1000Mi"
-              cpu: "1"
-            requests:
               memory: "300Mi"
+              cpu: "500m"
+            requests:
+              memory: "50Mi"
               cpu: "200m"
           ports:
             - containerPort: 8080
           env:
             - name: REDIRECT_HOSTNAME
-              value: "badstats.offtherailsradio.org"
+              value: "https://badstats.offtherailsradio.org"
             - name: CLIENTID
               valueFrom:
                 secretKeyRef:
