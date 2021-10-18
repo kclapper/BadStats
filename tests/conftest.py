@@ -1,5 +1,6 @@
-import os
+import os, base64, requests
 import tempfile
+from datetime import datetime, timezone
 
 import pytest
 from badstats import create_app
@@ -54,3 +55,58 @@ class AuthActions(object):
 @pytest.fixture
 def auth(client):
     return AuthActions(client)
+
+@pytest.fixture
+def spotify_creds(monkeypatch):
+    monkeypatch.setenv("CLIENTID", "test")
+    monkeypatch.setenv("CLIENTSECRET", "test")
+
+class FakeResponse:
+    def __init__(self, json, status_code=200):
+        self.jsondata = json
+        self.status_code = status_code
+
+        self.headers = {
+            'date': datetime(2021, 1, 1, 0, 0, 0, 0, timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %Z')
+        }
+
+    def json(self):
+        self.jsondata.update({
+            'expires_in': 5 # 5 seconds
+        })
+        return self.jsondata
+
+@pytest.fixture
+def mock_spotify_auth(monkeypatch, spotify_creds):
+
+    def mock_post(url, data, headers):
+        if url == "https://accounts.spotify.com/api/token":
+            ## For getting either a client or auth token
+            
+            ## Check authorization header is present and valid
+            assert "Authorization" in headers and headers['Authorization'] == f'Basic {str(base64.b64encode("test:test".encode("utf-8")), "utf-8")}'
+
+            ## Check grant type specified
+            assert 'grant_type' in data
+
+            if (grant := data['grant_type']) == 'client_credentials':
+                return FakeResponse(json={"access_token" : "fake_client_token"})
+            elif grant == 'authorization_code':   
+                assert 'code' in data and 'redirect_uri' in data
+
+                return FakeResponse(json = {
+                    'refresh_token': 'fake_refresh_token',
+                    'access_token': 'fake_auth_token',
+                })
+            elif grant == 'refresh_token':
+                return FakeResponse(json = {
+                    'refresh_token': 'fake_refresh_token',
+                    'access_token': 'fake_auth_token',
+                })
+            else:
+                raise Exception(f"Improper grant type specified: {grant}")
+
+        else:
+            raise Exception("Wrong url sent to Spotify api")
+
+    monkeypatch.setattr(requests, "post", mock_post)

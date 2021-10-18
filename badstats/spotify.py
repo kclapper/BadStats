@@ -11,15 +11,15 @@ class Spotify:
         self.id = os.environ["CLIENTID"]
         self.secret = os.environ["CLIENTSECRET"]
         if code and url and sessionid:
-            self.token = self.generateAuthToken(code, url, sessionid)
+            self.token = self._generateAuthToken(code, url, sessionid)
         elif sessionid:
-            self.token = self.getAuthToken(sessionid)
+            self.token = self._getAuthToken(sessionid)
         elif code or url or sessionid:
-            current_app.logger.warning("Incomplete arguments given to Spotify(), running as client")
+            raise Exception("Incomplete arguments given to Spotify()")
         else:
-            self.token = self.getClientToken()
+            self.token = self._getClientToken()
         
-    def tokenRequest(self, data):
+    def _tokenRequest(self, data):
         ## Make token request for either client or auth token
 
         ## Get base64 encoded spotify app ID and secret
@@ -33,12 +33,12 @@ class Spotify:
 
         return requests.post("https://accounts.spotify.com/api/token", data=data, headers=headers)
 
-    def getClientToken(self):
+    def _getClientToken(self):
             ## Get authentication token from Spotify 
             ## Return token if authenticated, None if not.
 
             ## First check cache for valid token
-            cachedToken = self.checkTokenCache()
+            cachedToken = self._checkTokenCache()
             if cachedToken:
                 return cachedToken
 
@@ -46,16 +46,16 @@ class Spotify:
             data = {
                 'grant_type': 'client_credentials'
             }
-            response = self.tokenRequest(data)
+            response = self._tokenRequest(data)
             
             if response.status_code >= 300:
-                return None
+                raise Exception("Client token request failed")
 
             # Cache and return token
-            self.cacheToken(response)
+            self._cacheToken(response)
             return response.json()["access_token"]
     
-    def generateAuthToken(self, code, url, sessionid):
+    def _generateAuthToken(self, code, url, sessionid):
         ## Get user authenticated token
         ## Stores the token in the database for session based auth
 
@@ -64,22 +64,20 @@ class Spotify:
             'code': code,
             'redirect_uri': url,
         }
-        response = self.tokenRequest(data)
+        response = self._tokenRequest(data)
 
         if response.status_code >= 300:
-            current_app.logger.warning("getAuthToken failed to get user auth token")
-            return None
+            raise Exception("User authentication token request failed")
         
         current_app.logger.debug("User authenticated token acquired")
 
-        self.cacheToken(response, sessionid)
+        self._cacheToken(response, sessionid)
         
-        return self.getAuthToken(sessionid)
-        # return response.json()['access_token']
+        return self._getAuthToken(sessionid)
 
-    def getAuthToken(self, sessionid):
+    def _getAuthToken(self, sessionid):
 
-        cachedToken = self.checkTokenCache(sessionid)
+        cachedToken = self._checkTokenCache(sessionid)
         if cachedToken:
             return cachedToken
         
@@ -92,13 +90,12 @@ class Spotify:
             'grant_type': 'refresh_token',
             'refresh_token': token['refresh']
         }
-        response = self.tokenRequest(data)
+        response = self._tokenRequest(data)
         
         if response.status_code >= 300:
-            current_app.logger.warning("Token refresh failed!")
-            return None
+            raise Exception("Token refresh failed")
         
-        expires = self.expires(response)
+        expires = self._expires(response)
         response = response.json()
         
         db.execute("UPDATE token SET token=?, expires=?, refresh=?", 
@@ -109,13 +106,13 @@ class Spotify:
         return response['access_token']
     
     @staticmethod
-    def expires(response):
+    def _expires(response):
         dateformatstring = '%a, %d %b %Y %H:%M:%S %Z'
         expires = datetime.strptime(response.headers['date'], dateformatstring) \
                         + timedelta(seconds=response.json()["expires_in"]) 
         return expires
 
-    def checkTokenCache(self, sessionid=None):
+    def _checkTokenCache(self, sessionid=None):
         ## Check if we still have a valid token
         ## Return token if we do, False if we don't
         
@@ -138,10 +135,10 @@ class Spotify:
         else:
             return token['token']
 
-    def cacheToken(self, response, sessionid=None):
+    def _cacheToken(self, response, sessionid=None):
         ## Cache token to file in db
         
-        expires = self.expires(response)
+        expires = self._expires(response)
         
         token = response.json()["access_token"]
         
@@ -162,7 +159,7 @@ class Spotify:
 
         return
 
-    def apiQuery(self, url, params=None):
+    def _apiQuery(self, url, params=None):
         # Format and send request
         headers = {
             'Authorization': f'Bearer {self.token}'
@@ -173,10 +170,9 @@ class Spotify:
             params=params,
             )
         
-        if response.status_code >= 400:
-            current_app.logger.warning(f"API Query Error, status code {response.status_code}, message: {response.json()['error']['message']}")
-            current_app.logger.warning(f"API query url: {url}")
-            return []
+        if response.status_code >= 300:
+            raise Exception(f"API Query Error, status code {response.status_code}, message: {response.json()['error']['message']} \n \
+                                API query url: {url}")
         
         return response.json()
 
@@ -185,7 +181,7 @@ class Spotify:
         ## Used to search for artists to inspect
 
         if kind not in ['artist', 'album', 'song']:
-            return []
+            raise Exception("Invalid search kind")
 
         if kind == 'song':
             kind = 'track'
@@ -193,10 +189,7 @@ class Spotify:
         # Format and send request
         url = 'https://api.spotify.com/v1/search'
         params={'q': f'{query}', 'type': f'{kind}', 'limit': '5'}
-        response = self.apiQuery(url, params)
-
-        if not response:
-            return []
+        response = self._apiQuery(url, params)
 
         if kind == 'artist':
             result = [
@@ -236,45 +229,41 @@ class Spotify:
         elif kind == 'song':
             return self.song(id, region)
         else:
-            return []
+            raise Exception("Invalid item kind")
 
     def artist(self, id):
         # Return info about a specific artist
         
         url = f'https://api.spotify.com/v1/artists/{id}'
-        response = self.apiQuery(url)
+        response = self._apiQuery(url)
         
-        if not response:
-            result = {}
-        else:
-            result = {
-                'genres': response['genres'],
-                'images': response['images'],
-                'followers': response['followers']['total'],
-                'name': response['name'],
-                'popularity': response['popularity'],
-            }
+        result = {
+            'genres': response['genres'],
+            'images': response['images'],
+            'followers': response['followers']['total'],
+            'name': response['name'],
+            'popularity': response['popularity'],
+        }
 
         url = f'https://api.spotify.com/v1/artists/{id}/top-tracks'
         params = {'market': 'US'}
-        response = self.apiQuery(url, params=params)
+        response = self._apiQuery(url, params=params)
 
-        if response:
-            response = response['tracks']
-            result.update({
-                'top-tracks': [
-                    {
-                        'name': x['name'],
-                        'popularity': x['popularity'],
-                        'id': x['id'],
-                        'explicit': x['explicit'],
-                        'duration': x['duration_ms'],
-                        'album': x['album']['name'],
-                        'albumid': x['album']['id'],
-                        'images': x['album']['images'],
-                        'artists': [y['name'] for y in x['album']['artists']]
-                    } for x in response]
-            })
+        response = response['tracks']
+        result.update({
+            'top-tracks': [
+                {
+                    'name': x['name'],
+                    'popularity': x['popularity'],
+                    'id': x['id'],
+                    'explicit': x['explicit'],
+                    'duration': x['duration_ms'],
+                    'album': x['album']['name'],
+                    'albumid': x['album']['id'],
+                    'images': x['album']['images'],
+                    'artists': [y['name'] for y in x['album']['artists']]
+                } for x in response]
+        })
 
     
         return result
@@ -283,10 +272,7 @@ class Spotify:
         # Get specific album information
 
         url = f'https://api.spotify.com/v1/albums/{id}'
-        response = self.apiQuery(url)
-
-        if not response:
-            return {}
+        response = self._apiQuery(url)
         
         result = {
             'artists': [y['name'] for y in response['artists']],
@@ -310,10 +296,7 @@ class Spotify:
 
         url = f'https://api.spotify.com/v1/tracks/{id}'
         params = {'market': region}
-        response = self.apiQuery(url, params=params)
-
-        if not response:
-            return {}
+        response = self._apiQuery(url, params=params)
         
         result = {
             'album': {
@@ -332,10 +315,7 @@ class Spotify:
         } 
 
         url = f'https://api.spotify.com/v1/audio-features/{id}'
-        response = self.apiQuery(url)
-
-        if not response:
-            return {}
+        response = self._apiQuery(url)
         
         result.update({
             "danceability": response['danceability'],
@@ -371,10 +351,7 @@ class Spotify:
 
         url = "https://api.spotify.com/v1/me/playlists"
 
-        response = self.apiQuery(url)
-
-        if not response:
-            return {}
+        response = self._apiQuery(url)
 
         results = [{
             'description': x['description'],
@@ -384,18 +361,13 @@ class Spotify:
             'owner': x['owner']['display_name'],
         } for x in response['items']]
 
-        current_app.logger.debug(results)
-
         return results
 
     def getPlaylist(self, id):
 
         url = f"https://api.spotify.com/v1/playlists/{id}"
 
-        response = self.apiQuery(url)
-
-        if not response:
-            return {}
+        response = self._apiQuery(url)
 
         results = {
             'description': response['description'],
