@@ -5,9 +5,9 @@ metadata:
   name: db-pvc
   namespace: badstats
 spec:
-  storageClassName: local-path
+  storageClassName: longhorn
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 4Gi
