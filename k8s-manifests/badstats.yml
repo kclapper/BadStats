@@ -5,7 +5,7 @@ metadata:
   name: badstats
   namespace: badstats
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: badstats
@@ -14,9 +14,16 @@ spec:
       labels:
         app: badstats
     spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: badstats
       containers:
         - name: badstats
-          image: kpuc1997/badstats:1.1.1
+          image: kpuc1997/badstats:1.1.2
           imagePullPolicy: IfNotPresent
           resources:
             limits:

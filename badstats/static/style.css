@@ -1,7 +1,38 @@
-html { font-family: sans-serif; background: #eee; padding: 1rem; }
+html {
+    font-size: 3.75vmin;
+}
+
+@media screen and (min-width: 992px) {
+    html {
+        font-size: 2.5vmin
+    }
+}
+
+/* @media screen and (max-width: 767px) {
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+} */
+
+html { 
+    font-family: sans-serif; 
+    /* background: #eee6e6; */
+    background: #eee; 
+    padding: 1rem; 
+    /* width: 100%  */
+}
+
 body { max-width: 960px; margin: 0 auto; background: white; }
-h1 { font-family: serif; color: #377ba8; margin: 1rem 0; }
-a { color: #377ba8; }
+h1 { 
+    font-family: serif; 
+    color: #377ba8; 
+    /* color: #A31F34; */
+    margin: 1rem 0; 
+}
+a { 
+    color: #377ba8; 
+    /* color: #A31F34; */
+}
 hr { border: none; border-top: 1px solid lightgray; }
 nav { background: lightgray; display: flex; align-items: center; padding: 0 0.5rem; }
 nav h1 { flex: auto; margin: 0; }
@@ -20,30 +51,64 @@ nav ul li a, nav ul li span, header .action { display: block; padding: 0.5rem; }
 .content:last-child { margin-bottom: 0; }
 .content form { margin: 1em 0; display: flex; flex-direction: column; }
 .content label { font-weight: bold; margin-bottom: 0.5em; }
-.content input, .content textarea { margin-bottom: 1em; }
+.content input, .content textarea { 
+    margin-bottom: 1em;
+    min-height: 1.5em; 
+    font-size: 1em;
+    max-width: 30em;
+    margin-left: 1px;
+}
 .content textarea { min-height: 12em; resize: vertical; }
 input.danger { color: #cc2f2e; }
 input[type=submit] { align-self: start; min-width: 10em; }
 
-.searchPic {
-    height: 100px;
-    width: 100px;
+.detailPic {
+    height: 7em;
+    width: 7em;
+    padding-right: 1em;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    margin: auto;
 }
 
-.playlistListItem {
-    display: flex;
+.graph {
+    width: 100%;
+    height: auto;
+}
+
+.listItem {
+    display: block flex;
     flex-direction: row;
+    max-height: 8em;
+    margin: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+    text-decoration: none;
 }
 
-.playlistListItem > img {
-    height: 100px;
-    width: 100px;
-    padding-top: 5px; 
-    padding-bottom: 5px; 
-    padding-right: 10px;
+.listItem a {
+    text-decoration: none;
 }
 
-.playlistListItem > div {
+.listPic {
+    height: 7em;
+    width: 7em;
+    padding-right: 1em;
+    margin: auto;
+}
+
+.listText {
     flex: auto;
     margin: auto;
+    max-height: 5em;
+}
+
+.listText > p {
+    color: black;
+}
+
+.listText * {
+    margin: 0;
 }
