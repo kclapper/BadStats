@@ -9,7 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from badstats.db import get_db
 from badstats import getHostname
-from badstats.spotify import Spotify
+from badstats.spotify import UserSpotify
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -125,7 +125,7 @@ def receiveAuth(kind):
         host = getHostname()
         redirecturl = f"{host}{url_for('auth.receiveAuth', kind=kind)}"
 
-        Spotify(url=redirecturl, code=request.args.get('code'), sessionid=session['id'])
+        UserSpotify.fromCode(request.args.get('code'), redirecturl, session['id'])
 
         return redirect(url_for('stats.userPlaylists', kind=kind))
 

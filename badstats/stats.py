@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from badstats.db import get_db
 
-from badstats.spotify import Spotify
+from badstats.spotify import PublicSpotify, UserSpotify
 from badstats import getHostname
 import badstats.plot as plot
 from badstats.auth import withValidSession
@@ -30,7 +30,7 @@ def search(kind):
     if kind not in ['artist', 'album', 'song']:
         return render_template('stats/index.html')
     if request.method == 'POST' and request.form['search']:
-        spotify = Spotify()
+        spotify = PublicSpotify()
         results = spotify.search(request.form['search'], kind)
 
         if not results:
@@ -46,7 +46,7 @@ def item(kind, id):
     if not id:
         return render_template('stats/index.html')
     
-    spotify = Spotify()
+    spotify = PublicSpotify()
     result = spotify.item(kind, id)
 
     if not result:
@@ -56,19 +56,17 @@ def item(kind, id):
 
 @bp.route('/plot/album/<kind>/<id>')
 def plotPNG(kind, id):
-    spotify = Spotify()
+    spotify = PublicSpotify()
     tracks = spotify.albumTrackDetails(id)
     fig_data = plot.album(kind, tracks, regions=['US'])
         
     return render_template('stats/plot.html', result=fig_data.decode('utf-8'))
 
-
-
 @bp.route('/user/<kind>')
 @withValidSession
 def userPlaylists(kind):
 
-    spotify = Spotify(sessionid=session['id'])
+    spotify = UserSpotify(session['id'])
 
     results = spotify.getUserPlaylists()
 
@@ -77,7 +75,7 @@ def userPlaylists(kind):
 @bp.route('/user/<kind>/<id>')
 @withValidSession
 def userItem(kind, id):
-    spotify = Spotify(sessionid=session['id'])
+    spotify = UserSpotify(session['id'])
 
     if kind == "playlist":
         results = spotify.getPlaylist(id)
@@ -87,7 +85,7 @@ def userItem(kind, id):
 @bp.route('/user/playlist/<id>/plot/<kind>')
 @withValidSession
 def userPlaylistPlot(id, kind):
-    spotify = Spotify(sessionid=session['id'])
+    spotify = UserSpotify(session['id'])
 
     results = spotify.getPlaylist(id)
     tracks = []

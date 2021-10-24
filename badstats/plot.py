@@ -3,9 +3,6 @@ import numpy as np
 from io import BytesIO
 import base64
 
-
-from badstats.spotify import Spotify
-
 def renderPlot(fig):
     figfile = BytesIO() # Where to save figure
 

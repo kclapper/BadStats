@@ -1,20 +1,67 @@
-import pytest
+import pytest, os
+from datetime import datetime, timezone, timedelta
 from badstats.db import get_db
-from badstats.spotify import Spotify
+from badstats.spotify import UserSpotify, AbstractSpotify, PublicSpotify
 
-def test_client_init(app):
+def test_abs_init(app, spotify_creds):
     with app.app_context():
-        spotify = Spotify()
-        assert spotify != None
+        with pytest.raises(NotImplementedError):
+            spotify = AbstractSpotify()
 
-        # Twice so it hits the cache
-        spotify = Spotify() 
-        assert spotify != None
+def test_abs_expires(fake_response):
+    response = fake_response(date=datetime(2021, 1, 1, 0, 0, 0, 0, timezone.utc))
+    assert AbstractSpotify._expires(response) == datetime(2021, 1, 1, 0, 0, 5, 0)
 
-def test_auth_init(app, mock_spotify_auth):
+def test_abs_tokenExpires():
+    token = {
+        "expires": datetime.now().isoformat()
+    }
+    assert AbstractSpotify._tokenExpired(token) == True
+
+    token = {
+        "expires": (datetime.now() + timedelta(1)).isoformat()
+    }
+    assert AbstractSpotify._tokenExpired(token) == False
+
+def test_public_spotify_init_fail(app, spotify_creds):
     with app.app_context():
-        # Always hits the cache
-        spotify = Spotify(code='test', url='testurl.test/test', sessionid='testsession')
-    assert spotify != None
+        with pytest.raises(Exception):
+            spotify = PublicSpotify()
 
-# def test_search(app, mock_spotify_search):
+def test_public_spotify_init(app):
+    with app.app_context():
+        spotify = PublicSpotify()
+
+@pytest.mark.parametrize('kind, search, expected', (
+    ("artist", "paramore", "74XFHRwlV6OrjEM0A2NCMF"),
+    ("album", "paramore", "4sgYpkIASM1jVlNC8Wp9oF"),
+    ("song", "aint it fun", "1j8z4TTjJ1YOdoFEDwJTQa"),
+))
+def test_public_spotify_search(app, kind, search, expected):
+    with app.app_context():
+        spotify = PublicSpotify()
+
+        results = spotify.search(search, kind)
+
+        assert expected in [result['id'] for result in results]
+
+@pytest.mark.parametrize('kind, item, expected', (
+    ("artist", "74XFHRwlV6OrjEM0A2NCMF", "Paramore"),
+    ("album", "4sgYpkIASM1jVlNC8Wp9oF", "Paramore"),
+    ("song", "1j8z4TTjJ1YOdoFEDwJTQa", "Ain't It Fun"),
+))
+def test_public_spotify_item(app, kind, item, expected):
+    with app.app_context():
+        spotify = PublicSpotify()
+
+        result = spotify.item(kind, item)
+
+        assert result['name'] == expected
+
+def test_public_spotify_albumtrackdetails(app):
+    with app.app_context():
+        spotify = PublicSpotify()
+
+        results = spotify.albumTrackDetails("4sgYpkIASM1jVlNC8Wp9oF")
+
+        assert "Ain't It Fun" in [result['name'] for result in results['tracks']]
