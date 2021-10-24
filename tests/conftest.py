@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from badstats import create_app
 from badstats.db import get_db, init_db
+from badstats.spotify import AbstractSpotify
 
 with open(os.path.join(os.path.dirname(__file__), 'data.sql'), 'rb') as f:
     _data_sql = f.read().decode('utf8')
@@ -58,16 +59,16 @@ def auth(client):
 
 @pytest.fixture
 def spotify_creds(monkeypatch):
-    monkeypatch.setenv("CLIENTID", "test")
-    monkeypatch.setenv("CLIENTSECRET", "test")
+    monkeypatch.setattr(AbstractSpotify, "id", "test", raising=True)
+    monkeypatch.setattr(AbstractSpotify, "secret", "test", raising=True)
 
 class FakeResponse:
-    def __init__(self, json, status_code=200):
+    def __init__(self, json={}, status_code=200, date=datetime(2021, 1, 1, 0, 0, 0, 0, timezone.utc)):
         self.jsondata = json
         self.status_code = status_code
 
         self.headers = {
-            'date': datetime(2021, 1, 1, 0, 0, 0, 0, timezone.utc).strftime('%a, %d %b %Y %H:%M:%S %Z')
+            'date': date.strftime('%a, %d %b %Y %H:%M:%S %Z')
         }
 
     def json(self):
@@ -75,6 +76,10 @@ class FakeResponse:
             'expires_in': 5 # 5 seconds
         })
         return self.jsondata
+
+@pytest.fixture
+def fake_response():
+    yield FakeResponse
 
 @pytest.fixture
 def mock_spotify_auth(monkeypatch, spotify_creds):

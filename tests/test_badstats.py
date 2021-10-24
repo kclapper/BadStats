@@ -1,5 +1,6 @@
 import pytest
 from badstats.db import get_db
+from flask import url_for
 
 @pytest.mark.parametrize('path', (
     '/',
@@ -8,9 +9,48 @@ from badstats.db import get_db
 ))
 def test_get_basic_pages(client, path):
     response = client.get(path)
+    assert response.status_code == 200 or 302
+
+@pytest.mark.parametrize('path, search', (
+    ("/search/artist", "paramore"),
+    ("/search/album", "paramore"),
+    ("/search/song", "aint it fun"),
+))
+def test_search(client, path, search):
+    
+    response = client.get(path)
     assert response.status_code == 200
 
+    response = client.post(path, data={
+        "search": search,
+    }, follow_redirects=True)
+    assert response.status_code == 200 
 
+@pytest.mark.parametrize('path', (
+    "/item/artist/74XFHRwlV6OrjEM0A2NCMF",
+    "/item/album/4sgYpkIASM1jVlNC8Wp9oF",
+    "/item/song/1j8z4TTjJ1YOdoFEDwJTQa",
+))
+def test_item(client, path):
+    response = client.get(path)
+    assert response.status_code == 200
+
+@pytest.mark.parametrize('path', (
+    "/plot/album/popularity/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/danceability/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/duration_ms/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/energy/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/loudness/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/speechiness/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/acousticness/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/instrumentalness/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/liveness/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/valence/4sgYpkIASM1jVlNC8Wp9oF",
+    "/plot/album/tempo/4sgYpkIASM1jVlNC8Wp9oF",
+))
+def test_plot(client, path):
+    response = client.get(path)
+    assert response.status_code == 200
 
 # @pytest.mark.parametrize('path', (
 #     '/create',
