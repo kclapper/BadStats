@@ -23,7 +23,7 @@ spec:
             app: badstats
       containers:
         - name: badstats
-          image: kpuc1997/badstats:1.1.2
+          image: kpuc1997/badstats:1.1.3
           imagePullPolicy: IfNotPresent
           resources:
             limits:

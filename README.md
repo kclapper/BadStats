@@ -57,7 +57,7 @@ builder yet you'll need one:
 Then the build process is as follows:
 
     cd frontend
-    docker buildx build --platform linux/amd64,linux/arm64 -t kpuc1997/badstats:latest -t kpuc1997/badstats:x.x.x .
+    docker buildx build --platform linux/amd64,linux/arm64 -t kpuc1997/badstats:latest -t kpuc1997/badstats:x.x.x --push .
 
 ## Deployment
 
