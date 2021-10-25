@@ -53,7 +53,7 @@ class AbstractSpotify:
             )
         
         if response.status_code >= 300:
-            raise Exception(f"API Query Error, status code {response.status_code}, message: {response.json()['error']['message']} \n \
+            raise Exception(f"API Query Error, status code {response.status_code}, message: {response.json()} \n \
                                 API query url: {url}")
         
         return response.json()
