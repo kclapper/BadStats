@@ -9,7 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from badstats.db import get_db
 from badstats import getHostname
-from badstats.spotify import UserSpotify
+from spotify.Spotify import UserSpotify
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 

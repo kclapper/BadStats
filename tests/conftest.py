@@ -3,9 +3,11 @@ import tempfile
 from datetime import datetime, timezone
 
 import pytest
+
+import badstats.db
 from badstats import create_app
 from badstats.db import get_db, init_db
-from badstats.spotify import AbstractSpotify
+from spotify.Spotify import AbstractSpotify
 
 with open(os.path.join(os.path.dirname(__file__), 'data.sql'), 'rb') as f:
     _data_sql = f.read().decode('utf8')
@@ -59,8 +61,13 @@ def auth(client):
 
 @pytest.fixture
 def spotify_creds(monkeypatch):
+
+    ##### THESE TWO CAN GO AFTER REFACTORING
     monkeypatch.setattr(AbstractSpotify, "id", "test", raising=True)
     monkeypatch.setattr(AbstractSpotify, "secret", "test", raising=True)
+
+    monkeypatch.setenv("CLIENTID", "test")
+    monkeypatch.setenv("CLIENTSECRET", "test")
 
 class FakeResponse:
     def __init__(self, json={}, status_code=200, date=datetime(2021, 1, 1, 0, 0, 0, 0, timezone.utc)):
@@ -115,3 +122,24 @@ def mock_spotify_auth(monkeypatch, spotify_creds):
             raise Exception("Wrong url sent to Spotify api")
 
     monkeypatch.setattr(requests, "post", mock_post)
+
+@pytest.fixture
+def failedQuery(monkeypatch):
+    """All requests fail."""
+
+    def _makeFailedQuery(statusCode):
+        return {"status_code": statusCode}
+
+    def _failedQuery(statusCode):
+        monkeypatch.setattr(requests, "get", _makeFailedQuery(statusCode))
+    
+    return _failedQuery
+
+@pytest.fixture
+def dbReturnsNone(monkeypatch):
+    """Monkeypatches the db to always return None"""
+    
+    def returnNone():
+        return None
+    monkeypatch.setattr(badstats.db, "get_db", returnNone)
+

@@ -2,8 +2,11 @@ import json, requests, base64, os, re, logging
 from datetime import datetime, timedelta
 
 from flask import current_app
+from spotify.Token import BasicCreds
 
 from badstats.db import get_db
+
+from spotify.WebAPI import WebAPI
 
 class AbstractSpotify:
     id = os.environ["CLIENTID"]
@@ -17,7 +20,7 @@ class AbstractSpotify:
     
     @classmethod
     def _tokenRequest(cls, data):
-
+        
         ## Get base64 encoded spotify app ID and secret
         secret = f'{cls.id}:{cls.secret}'
         encodedSecret = str(base64.b64encode(secret.encode("utf-8")), "utf-8")
@@ -46,70 +49,17 @@ class AbstractSpotify:
         headers = {
             'Authorization': f'Bearer {self.token}'
         }
-        response = requests.get(
-            url, 
+
+        return WebAPI.get(
+            url,
             headers=headers,
-            params=params,
-            )
-        
-        if response.status_code >= 300:
-            raise Exception(f"API Query Error, status code {response.status_code}, message: {response.json()} \n \
-                                API query url: {url}")
-        
-        return response.json()
+            params=params
+        ).json()
 
-class PublicSpotify(AbstractSpotify):
-    def _checkTokenCache(self):
-        db = get_db()
-
-        token = db.execute('SELECT * FROM token WHERE token_type="client"').fetchone()
-
-        if token is None:
-            return False
-        elif self._tokenExpired(token):
-            db.execute('DELETE FROM token WHERE id=(?)', (token['id'],))
-            db.commit()
-            return False
-        else:
-            return token['token']
-
-    def _cacheToken(self, response):
-        ## Cache token to file in db
-        
-        expires = self._expires(response)
-        
-        token = response.json()["access_token"]
-        
-        db = get_db()
-        db.execute(
-                'INSERT INTO token (token, expires, refresh, token_type, sessionid)'
-                ' VALUES (?, ?, ?, ?, ?)',
-                (token, expires, None, "client", None)
-            )
-        db.commit()
-
-        return 
-        
-    def _getToken(self):
-        """Get authentication token from Spotify"""
-
-        ## First check cache for valid token
-        cachedToken = self._checkTokenCache()
-        if cachedToken:
-            return cachedToken
-
-        ## Make post request to ask for bearer token
-        data = {
-            'grant_type': 'client_credentials'
-        }
-        response = self._tokenRequest(data)
-        
-        if response.status_code >= 300:
-            raise Exception("Client token request failed")
-        
-        # Cache and return token
-        self._cacheToken(response)
-        return response.json()["access_token"]
+class Spotify(AbstractSpotify):
+    
+    def __init__(self):
+        self.token = BasicCreds().value()
 
     def search(self, query, kind):
         ## Used to search for artists to inspect
@@ -280,7 +230,7 @@ class PublicSpotify(AbstractSpotify):
 
         return tracks
 
-class UserSpotify(PublicSpotify):
+class UserSpotify(Spotify):
     def _checkTokenCache(self, sessionid):
         ## Check if we still have a valid token
         ## Return token if we do, False if we don't

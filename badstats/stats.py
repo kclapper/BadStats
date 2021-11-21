@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from badstats.db import get_db
 
-from badstats.spotify import PublicSpotify, UserSpotify
+from spotify.Spotify import Spotify, UserSpotify
 from badstats import getHostname
 import badstats.plot as plot
 from badstats.auth import withValidSession
@@ -30,7 +30,7 @@ def search(kind):
     if kind not in ['artist', 'album', 'song']:
         return render_template('stats/index.html')
     if request.method == 'POST' and request.form['search']:
-        spotify = PublicSpotify()
+        spotify = Spotify()
         results = spotify.search(request.form['search'], kind)
 
         if not results:
@@ -46,7 +46,7 @@ def item(kind, id):
     if not id:
         return render_template('stats/index.html')
     
-    spotify = PublicSpotify()
+    spotify = Spotify()
     result = spotify.item(kind, id)
 
     if not result:
@@ -56,7 +56,7 @@ def item(kind, id):
 
 @bp.route('/plot/album/<kind>/<id>')
 def plotPNG(kind, id):
-    spotify = PublicSpotify()
+    spotify = Spotify()
     tracks = spotify.albumTrackDetails(id)
     fig_data = plot.album(kind, tracks, regions=['US'])
         

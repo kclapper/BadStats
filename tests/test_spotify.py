@@ -1,7 +1,7 @@
 import pytest, os
 from datetime import datetime, timezone, timedelta
 from badstats.db import get_db
-from badstats.spotify import UserSpotify, AbstractSpotify, PublicSpotify
+from spotify.Spotify import UserSpotify, AbstractSpotify, Spotify
 
 def test_abs_init(app, spotify_creds):
     with app.app_context():
@@ -23,14 +23,15 @@ def test_abs_tokenExpires():
     }
     assert AbstractSpotify._tokenExpired(token) == False
 
-def test_public_spotify_init_fail(app, spotify_creds):
+def test_public_spotify_init_fail(app, spotify_creds, dbReturnsNone):
     with app.app_context():
         with pytest.raises(Exception):
-            spotify = PublicSpotify()
+            print(os.environ['CLIENTID'])
+            spotify = Spotify()
 
 def test_public_spotify_init(app):
     with app.app_context():
-        spotify = PublicSpotify()
+        spotify = Spotify()
 
 @pytest.mark.parametrize('kind, search, expected', (
     ("artist", "paramore", "74XFHRwlV6OrjEM0A2NCMF"),
@@ -39,7 +40,7 @@ def test_public_spotify_init(app):
 ))
 def test_public_spotify_search(app, kind, search, expected):
     with app.app_context():
-        spotify = PublicSpotify()
+        spotify = Spotify()
 
         results = spotify.search(search, kind)
 
@@ -52,7 +53,7 @@ def test_public_spotify_search(app, kind, search, expected):
 ))
 def test_public_spotify_item(app, kind, item, expected):
     with app.app_context():
-        spotify = PublicSpotify()
+        spotify = Spotify()
 
         result = spotify.item(kind, item)
 
@@ -60,8 +61,22 @@ def test_public_spotify_item(app, kind, item, expected):
 
 def test_public_spotify_albumtrackdetails(app):
     with app.app_context():
-        spotify = PublicSpotify()
+        spotify = Spotify()
 
         results = spotify.albumTrackDetails("4sgYpkIASM1jVlNC8Wp9oF")
 
         assert "Ain't It Fun" in [result['name'] for result in results['tracks']]
+
+@pytest.mark.parametrize('statusCode', (
+    300,
+    500,
+))
+def test_api_query_exception(app, failedQuery, statusCode):
+
+    failedQuery(statusCode)
+
+    with app.app_context():
+        spotify = Spotify()
+
+        with pytest.raises(Exception):
+            results = spotify.item('song', "1j8z4TTjJ1YOdoFEDwJTQa")
