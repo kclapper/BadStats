@@ -7,7 +7,6 @@ import pytest
 import badstats.db
 from badstats import create_app
 from badstats.db import get_db, init_db
-from spotify.Spotify import AbstractSpotify
 
 with open(os.path.join(os.path.dirname(__file__), 'data.sql'), 'rb') as f:
     _data_sql = f.read().decode('utf8')
@@ -61,11 +60,6 @@ def auth(client):
 
 @pytest.fixture
 def spotify_creds(monkeypatch):
-
-    ##### THESE TWO CAN GO AFTER REFACTORING
-    monkeypatch.setattr(AbstractSpotify, "id", "test", raising=True)
-    monkeypatch.setattr(AbstractSpotify, "secret", "test", raising=True)
-
     monkeypatch.setenv("CLIENTID", "test")
     monkeypatch.setenv("CLIENTSECRET", "test")
 

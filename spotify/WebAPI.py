@@ -11,6 +11,7 @@ class WebAPI:
         self._rawResponse = response
         self._statusCode = response.status_code
         self._assertSuccessful()
+
         self._content = {"headers": self._rawResponse.headers}
         self._content.update(self._rawResponse.json())
 
@@ -41,3 +42,9 @@ class WebAPI:
         """Get the value of a key from the json representation of the response."""
 
         return self._content[key]
+
+    def __str__(self):
+        return str(self._content)
+
+    def __iter__(self):
+        return iter(self._content.items())

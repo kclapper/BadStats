@@ -1,27 +1,28 @@
 import pytest, os
 from datetime import datetime, timezone, timedelta
 from badstats.db import get_db
-from spotify.Spotify import UserSpotify, AbstractSpotify, Spotify
+from spotify.Spotify import UserSpotify, Spotify
+from spotify.Token import Token, ClientToken, BasicCreds
 
-def test_abs_init(app, spotify_creds):
-    with app.app_context():
-        with pytest.raises(NotImplementedError):
-            spotify = AbstractSpotify()
+# def test_abs_init(app, spotify_creds):
+#     with app.app_context():
+#         with pytest.raises(NotImplementedError):
+#             spotify = AbstractSpotify()
 
-def test_abs_expires(fake_response):
-    response = fake_response(date=datetime(2021, 1, 1, 0, 0, 0, 0, timezone.utc))
-    assert AbstractSpotify._expires(response) == datetime(2021, 1, 1, 0, 0, 5, 0)
+# def test_abs_expires(fake_response):
+#     response = fake_response(date=datetime(2021, 1, 1, 0, 0, 0, 0, timezone.utc))
+#     assert AbstractSpotify._expires(response) == datetime(2021, 1, 1, 0, 0, 5, 0)
 
-def test_abs_tokenExpires():
-    token = {
-        "expires": datetime.now().isoformat()
-    }
-    assert AbstractSpotify._tokenExpired(token) == True
+# def test_abs_tokenExpires():
+#     token = {
+#         "expires": datetime.now().isoformat()
+#     }
+#     assert AbstractSpotify._tokenExpired(token) == True
 
-    token = {
-        "expires": (datetime.now() + timedelta(1)).isoformat()
-    }
-    assert AbstractSpotify._tokenExpired(token) == False
+#     token = {
+#         "expires": (datetime.now() + timedelta(1)).isoformat()
+#     }
+#     assert AbstractSpotify._tokenExpired(token) == False
 
 def test_public_spotify_init_fail(app, spotify_creds, dbReturnsNone):
     with app.app_context():
@@ -80,3 +81,108 @@ def test_api_query_exception(app, failedQuery, statusCode):
 
         with pytest.raises(Exception):
             results = spotify.item('song', "1j8z4TTjJ1YOdoFEDwJTQa")
+
+def test_token_isExpired():
+    expires = datetime(2000,1,1,1)
+
+    token = Token("test", expires)
+
+    assert token.isExpired()
+
+def test_token_value():
+
+    expires = datetime(2000,1,1,1)
+
+    token = Token("test", expires)
+
+    assert token.value() == "test"
+
+def test_clientToken_fromDB(app):
+    with app.app_context():
+        db = get_db()
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+        db.execute('INSERT INTO token (token, expires, refresh, token_type, sessionid)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                ("test", "2000-01-01T00:00:00", None, "client", None)
+                )
+        db.commit()
+
+        token = ClientToken.fromDatabase()
+
+        assert token.value() == "test"
+        assert token.isExpired()
+
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+
+def test_clientToken_addToDB(app):
+    with app.app_context():
+        db = get_db()
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+        
+        token = ClientToken("test", datetime(2000,1,1))
+        token.addToDatabase()
+
+        dbEntry = db.execute('SELECT * FROM token WHERE token_type="client"').fetchone()
+
+        assert dbEntry['token'] == "test"
+        assert dbEntry['expires'] == '2000-01-01T00:00:00'
+
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+
+def test_clientToken_removeFromDB(app):
+    with app.app_context():
+        db = get_db()
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+        db.execute('INSERT INTO token (token, expires, refresh, token_type, sessionid)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                ("test", "2000-01-01T00:00:00", None, "client", None)
+                )
+        db.commit()
+        
+        token = ClientToken.fromDatabase()
+        token.removeFromDatabase()
+
+        dbEntry = db.execute('SELECT * FROM token WHERE token_type="client"').fetchone()
+
+        assert dbEntry == None
+
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+
+def test_BasicCreds_init(app):
+    with app.app_context():
+        db = get_db()
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+
+        creds = BasicCreds()
+
+        assert creds != None
+        assert creds.value() != None
+        assert creds.value() != "test"
+
+def test_BasicCreds_expired_init(app):
+    with app.app_context():
+        db = get_db()
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+        db.execute('INSERT INTO token (token, expires, refresh, token_type, sessionid)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                ("test", "2000-01-01T00:00:00", None, "client", None)
+                )
+        db.commit()
+
+        creds = BasicCreds()
+
+        assert creds != None
+        assert creds.value() != None
+        assert creds.value() != "test"
+
+        dbRows = db.execute('SELECT * FROM token WHERE token_type="client"').fetchall()
+
+        assert len(dbRows) == 1

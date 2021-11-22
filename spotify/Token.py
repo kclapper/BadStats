@@ -25,31 +25,6 @@ class Token:
 
         return self._value
 
-    @classmethod
-    def getNewToken(cls, grant_type):
-        """Sends the request for a new token from the spotify web api."""
-
-        url = "https://accounts.spotify.com/api/token"
-        headers = {'Authorization': f'Basic {cls._getEncodedCredentials()}'}
-        data = {"grant_type": grant_type}
-
-        return WebAPI.post(url, headers=headers, data=data).json()
-
-    @staticmethod
-    def _getEncodedCredentials():
-        """
-        Formats the application id and secret in the way spotify wants them
-        for token requests.
-        """
-        
-        id = os.environ["CLIENTID"]
-        secret = os.environ["CLIENTSECRET"]
-
-        tokenString = f"{id}:{secret}".encode("utf-8")
-        b64EncodedToken = base64.b64encode(tokenString, "utf-8")
-
-        return str(b64EncodedToken)
-
 class ClientToken(Token):
 
     def __init__(self, value: str, expires, id=None):
