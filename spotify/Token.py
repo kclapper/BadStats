@@ -2,6 +2,8 @@ import base64, os
 
 from datetime import datetime, timedelta
 
+from flask.globals import session
+
 from badstats.db import get_db
 
 from spotify.WebAPI import WebAPI
@@ -9,11 +11,21 @@ from spotify.WebAPI import WebAPI
 class Token:
     """Represents a token with an expiration datetime."""
 
-    def __init__(self, value: str, expires: datetime):
+    def __init__(self, value: str, expires: datetime, id=None):
         """Prepare common elements of token requests."""
         
         self._value = value
         self._expires = expires
+        self._id = id
+
+    def removeFromDatabase(self):
+        """Removes the token from the database."""
+        
+        if not self._id:
+            raise Exception("Token must have an id to remove it from the database.")
+        db = get_db()
+        db.execute('DELETE FROM token WHERE id=(?)', (self._id,))
+        db.commit()
 
     def isExpired(self) -> bool:
         """Determines if the token is expired."""
@@ -28,8 +40,7 @@ class Token:
 class ClientToken(Token):
 
     def __init__(self, value: str, expires, id=None):
-        super().__init__(value, expires)
-        self._id = id
+        super().__init__(value, expires, id)
 
     @classmethod
     def fromDatabase(cls):
@@ -48,15 +59,6 @@ class ClientToken(Token):
             id=token['id']
             )
         
-    def removeFromDatabase(self):
-        """Removes the token from the database."""
-        
-        if not self._id:
-            raise Exception("ClientToken must have an id to remove it from the database.")
-        db = get_db()
-        db.execute('DELETE FROM token WHERE id=(?)', (self._id,))
-        db.commit()
-
     def addToDatabase(self):
         """Adds a token to the database."""
 
@@ -68,15 +70,67 @@ class ClientToken(Token):
             )
         db.commit()
 
+class UserToken(Token):
+
+    def __init__(self, value, expires, refresh_token, sessionid, id=None):
+        super().__init__(value, expires, id)
+        self._refreshTokenValue = refresh_token
+        self._sessionid = sessionid
+    
+    @classmethod
+    def fromDatabase(cls, sessionid):
+        """Return a UserToken tied to a sessionid cached in the database."""
+
+        db = get_db()
+
+        token = db.execute('SELECT * FROM token WHERE sessionid=(?)', (sessionid,)).fetchone()
+
+        if token is None:
+            raise Exception("UserToken not found in the database!")
+
+        return cls(
+            token['token'], 
+            datetime.fromisoformat(token['expires']),
+            token['refresh'],
+            token['sessionid'], 
+            id=token['id']
+            )
+
+    def addToDatabase(self):
+        """Adds the token to the database."""
+
+        db = get_db()
+        db.execute(
+                'INSERT INTO token (token, expires, refresh, token_type, sessionid)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                (self._value, self._expires.isoformat(), self._refreshTokenValue, "auth", self._sessionid)
+            )
+        db.commit()
+
+    def refreshTokenValue(self):
+        return self._refreshTokenValue
+
+    def refresh(self, token, expires, refreshToken):
+        """Refresh the token with new credentials."""
+
+        self._value = token
+        self._expires = expires
+        self._refreshTokenValue = refreshToken
+
+        db = get_db()
+        db.execute("UPDATE token SET token=?, expires=? WHERE sessionid=?", 
+                    (self._value, self._expires, self._sessionid)
+        )
+        db.commit()
+
 class Creds:
 
     @classmethod
-    def _tokenRequest(cls, grant_type):
+    def _tokenRequest(cls, data):
         """Sends the request for a new token from the spotify web api."""
 
         url = "https://accounts.spotify.com/api/token"
         headers = {'Authorization': f'Basic {cls._getEncodedCredentials()}'}
-        data = {"grant_type": grant_type}
 
         return WebAPI.post(url, headers=headers, data=data)
 
@@ -102,6 +156,13 @@ class Creds:
                         + timedelta(seconds=response["expires_in"]) 
         return expires
 
+    def value(self):
+        """Returns the value of the corresponding token."""
+
+        ## The concrete class must define self._token in it's construction.
+
+        return self._token.value()
+
 class BasicCreds(Creds):
     """Represents 'client' credentials from the spotify web api."""
 
@@ -119,7 +180,7 @@ class BasicCreds(Creds):
     def _getNewToken(self):
         """Request a new ClientToken"""
 
-        response = self._tokenRequest("client_credentials")
+        response = self._tokenRequest({"grant_type": "client_credentials"})
 
         token = ClientToken(response["access_token"], self._expires(response))
 
@@ -127,7 +188,53 @@ class BasicCreds(Creds):
 
         return token
 
-    def value(self):
-        """Returns the value of the ClientToken."""
+class UserCreds(Creds):
+    """Represents credentials for a specific Spotify user account"""
+
+    def __init__(self, sessionid):
+
+        self._token = UserToken.fromDatabase(sessionid)
+
+        if self._token.isExpired():
+            self._refreshToken()
         
-        return self._token.value()
+    def _refreshToken(self):
+        """Uses the refresh token to get a new auth token."""
+
+        response = self._tokenRequest({
+            'grant_type': 'refresh_token',
+            'refresh_token': self._token.refreshTokenValue()
+        })
+
+        self._token.refresh(
+            response['access_token'],
+            self._expires(response),
+        )
+
+    @classmethod
+    def fromCode(cls, code, url, sessionid):
+        """Create new user credentials."""
+
+        response = cls._tokenRequest({
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': url,
+        })
+
+        tokenValue = response['access_token']
+        expires = cls._expires(response)
+        refreshTokenValue = response['refresh_token']
+
+        token = UserToken(
+            tokenValue,
+            expires,
+            refreshTokenValue,
+            sessionid 
+        )
+
+        token.addToDatabase()
+
+        return cls(sessionid)
+    
+
+            

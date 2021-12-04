@@ -2,7 +2,7 @@ import pytest, os
 from datetime import datetime, timezone, timedelta
 from badstats.db import get_db
 from spotify.Spotify import UserSpotify, Spotify
-from spotify.Token import Token, ClientToken, BasicCreds
+from spotify.Token import Token, UserToken, ClientToken, BasicCreds
 
 # def test_abs_init(app, spotify_creds):
 #     with app.app_context():
@@ -97,6 +97,28 @@ def test_token_value():
 
     assert token.value() == "test"
 
+def test_token_removeFromDB(app):
+    with app.app_context():
+        db = get_db()
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+        db.execute('INSERT INTO token (token, expires, refresh, token_type, sessionid)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                ("test", "2000-01-01T00:00:00", None, "client", None)
+                )
+        db.commit()
+        dbEntry = db.execute('SELECT * FROM token WHERE token_type="client"').fetchone()
+        
+        token = Token(dbEntry['token'], dbEntry['expires'], dbEntry['id'])
+        token.removeFromDatabase()
+
+        dbEntry = db.execute('SELECT * FROM token WHERE token_type="client"').fetchone()
+
+        assert dbEntry == None
+
+        db.execute('DELETE FROM token WHERE token_type="client"')
+        db.commit()
+
 def test_clientToken_fromDB(app):
     with app.app_context():
         db = get_db()
@@ -133,27 +155,6 @@ def test_clientToken_addToDB(app):
         db.execute('DELETE FROM token WHERE token_type="client"')
         db.commit()
 
-def test_clientToken_removeFromDB(app):
-    with app.app_context():
-        db = get_db()
-        db.execute('DELETE FROM token WHERE token_type="client"')
-        db.commit()
-        db.execute('INSERT INTO token (token, expires, refresh, token_type, sessionid)'
-                ' VALUES (?, ?, ?, ?, ?)',
-                ("test", "2000-01-01T00:00:00", None, "client", None)
-                )
-        db.commit()
-        
-        token = ClientToken.fromDatabase()
-        token.removeFromDatabase()
-
-        dbEntry = db.execute('SELECT * FROM token WHERE token_type="client"').fetchone()
-
-        assert dbEntry == None
-
-        db.execute('DELETE FROM token WHERE token_type="client"')
-        db.commit()
-
 def test_BasicCreds_init(app):
     with app.app_context():
         db = get_db()
@@ -186,3 +187,42 @@ def test_BasicCreds_expired_init(app):
         dbRows = db.execute('SELECT * FROM token WHERE token_type="client"').fetchall()
 
         assert len(dbRows) == 1
+
+def test_UserToken_fromDB(app):
+    with app.app_context():
+        db = get_db()
+        db.execute('DELETE FROM token WHERE sessionid="test"')
+        db.commit()
+        db.execute('INSERT INTO token (token, expires, refresh, token_type, sessionid)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                ("test", "2000-01-01T00:00:00", "test", "auth", "test")
+                )
+        db.commit()
+
+        token = UserToken.fromDatabase("test")
+
+        assert token.value() == "test"
+        assert token.isExpired()
+
+        db.execute('DELETE FROM token WHERE sessionid="test"')
+        db.commit()
+
+def test_UserToken_addToDB(app):
+    with app.app_context():
+        db = get_db()
+        db.execute('DELETE FROM token WHERE sessionid="test"')
+        db.commit()
+
+        token = UserToken("test", datetime(2000,1,1), "test", "test")
+        token.addToDatabase()
+
+        dbEntry = db.execute('SELECT * FROM token WHERE sessionid="test"').fetchone()
+
+        assert dbEntry['token'] == "test"
+        assert dbEntry['expires'] == '2000-01-01T00:00:00'
+        assert dbEntry['refresh'] == "test"
+        assert dbEntry['token_type'] == "auth"
+        assert dbEntry['sessionid'] == "test"
+
+        db.execute('DELETE FROM token WHERE sessionid="test"')
+        db.commit()

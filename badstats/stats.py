@@ -1,6 +1,7 @@
 from flask import (
     Blueprint, render_template, request, redirect, url_for, g, current_app, session
 )
+from flask.wrappers import Response
 from werkzeug.exceptions import abort
 import logging
 from datetime import datetime, timedelta
@@ -87,18 +88,16 @@ def userItem(kind, id):
 def userPlaylistPlot(id, kind):
     spotify = UserSpotify(session['id'])
 
-    results = spotify.getPlaylist(id)
+    response = spotify.getPlaylist(id)
     tracks = []
-    for track in results['tracks']:
-        trackstats = spotify.song(track['id'])
+    for track in response['tracks']['items']:
+        trackstats = spotify.song(track['track']['id'])
         tracks.append({
             'name': trackstats['name'],
             kind: trackstats[kind]
         })
     
-    fig_data = plot.playlist(kind, tracks, results['name'])
-
-
+    fig_data = plot.playlist(kind, tracks, response['name'])
 
     return render_template(f'stats/user/playlistPlot.html', result=fig_data.decode('utf-8'))
     
