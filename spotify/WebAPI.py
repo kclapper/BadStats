@@ -48,3 +48,6 @@ class WebAPI:
 
     def __iter__(self):
         return iter(self._content.items())
+
+    def update(self, data):
+        self._content.update(data)

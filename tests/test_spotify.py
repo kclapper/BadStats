@@ -4,26 +4,6 @@ from badstats.db import get_db
 from spotify.Spotify import UserSpotify, Spotify
 from spotify.Token import Token, UserToken, ClientToken, BasicCreds
 
-# def test_abs_init(app, spotify_creds):
-#     with app.app_context():
-#         with pytest.raises(NotImplementedError):
-#             spotify = AbstractSpotify()
-
-# def test_abs_expires(fake_response):
-#     response = fake_response(date=datetime(2021, 1, 1, 0, 0, 0, 0, timezone.utc))
-#     assert AbstractSpotify._expires(response) == datetime(2021, 1, 1, 0, 0, 5, 0)
-
-# def test_abs_tokenExpires():
-#     token = {
-#         "expires": datetime.now().isoformat()
-#     }
-#     assert AbstractSpotify._tokenExpired(token) == True
-
-#     token = {
-#         "expires": (datetime.now() + timedelta(1)).isoformat()
-#     }
-#     assert AbstractSpotify._tokenExpired(token) == False
-
 def test_public_spotify_init_fail(app, spotify_creds, dbReturnsNone):
     with app.app_context():
         with pytest.raises(Exception):
@@ -59,6 +39,17 @@ def test_public_spotify_item(app, kind, item, expected):
         result = spotify.item(kind, item)
 
         assert result['name'] == expected
+
+@pytest.mark.parametrize('kind, items', (
+    ("artist", ["74XFHRwlV6OrjEM0A2NCMF", "1XpDYCrUJnvCo9Ez6yeMWh", "1gUi2utSbJLNPddYENJAp4"]),
+    ("album", ["4sgYpkIASM1jVlNC8Wp9oF", "4UdZHRBCIoe7XCPr8KdVg7", "1AckkxSo39144vOBrJ1GkS"]),
+    ("song", ["1j8z4TTjJ1YOdoFEDwJTQa", "0G2wimhVoDYXbQ6csDxtSf", "6crBy2sODw2HS53xquM6us"]),
+))
+def test_public_spotify_item(app, kind, items):
+    with app.app_context():
+        spotify = Spotify()
+
+        result = spotify.multipleItems(kind, items)
 
 def test_public_spotify_albumtrackdetails(app):
     with app.app_context():

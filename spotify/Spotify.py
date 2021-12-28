@@ -53,68 +53,53 @@ class Spotify:
         else:
             raise Exception("Invalid search kind after response")
 
-    def item(self, kind, id, region='US'):
-        if kind == 'artist':
-            return self.artist(id)
-        elif kind == 'album':
-            return self.album(id)
-        elif kind == 'song':
-            return self.song(id, region)
-        else:
-            raise Exception("Invalid item kind")
-
-    def artist(self, id):
-        # Return info about a specific artist
+    def item(self, kind, id):
         
-        url = f'https://api.spotify.com/v1/artists/{id}'
+        resourceMap = {
+            "artist": ("artists", f'https://api.spotify.com/v1/artists/{id}/top-tracks', {'market': 'US'}),
+            "album": ("albums", False, None),
+            "song": ("tracks", f'https://api.spotify.com/v1/audio-features/{id}', None),
+        }
+        resource = resourceMap[kind]
+
+        url = f'https://api.spotify.com/v1/{resource[0]}/{id}'
         response = self._apiQuery(url)
 
-        result = {key:value for (key, value) in response}
-
-        url = f'https://api.spotify.com/v1/artists/{id}/top-tracks'
-        params = {'market': 'US'}
-        response = self._apiQuery(url, params=params)
-        
-        result.update({
-            "top-tracks": response['tracks']
-        })
-
-        return result
-
-    def album(self, id):
-        # Get specific album information
-
-        url = f'https://api.spotify.com/v1/albums/{id}'
-        response = self._apiQuery(url)
+        if resource[1]:
+            response.update(self._apiQuery(resource[1], params=resource[2]))
 
         return response
 
-    def song(self, id, region='US'):
-        # Get specific song information
+    def multipleItems(self, kind, ids):
 
-        url = f'https://api.spotify.com/v1/tracks/{id}'
-        params = {'market': region}
+        resourceMap = {
+            "artist": ("artists", 50),#, f'https://api.spotify.com/v1/artists/{id}/top-tracks', {'market': 'US'}),
+            "album": ("albums", 20),#, False, None),
+            "song": ("tracks", 20),#, f'https://api.spotify.com/v1/audio-features/{id}', None),
+        }
+        resource = resourceMap[kind]
+
+        url = f'https://api.spotify.com/v1/{resource[0]}'
+        params = {
+            'ids': ",".join(ids),
+            'market': 'US',
+        }
         response = self._apiQuery(url, params=params)
-        
-        result = {key:value for key, value in response}
 
-        url = f'https://api.spotify.com/v1/audio-features/{id}'
-        response = self._apiQuery(url)
+        return response[resource[0]]
         
-        result.update({key:value for key, value in response})
-
-        return result
-        
-    def albumTrackDetails(self, id, region='US'):
+    def albumTrackDetails(self, id):
         album = self.item('album', id)
+
         def trackSort(item):
             return item['track_number']
+
         album['tracks']['items'].sort(key=trackSort)
         tracks = {
             'album': album['name'],
-            'tracks': [self.song(x['id'], region) for x in album['tracks']['items']]
+            'tracks': self.multipleItems("song", [song['id'] for song in album['tracks']['items']])
             }
-
+     
         return tracks
 
 class UserSpotify(Spotify):
@@ -130,8 +115,7 @@ class UserSpotify(Spotify):
         return cls(sessionid)
 
     def getUserPlaylists(self):
-        # Requires User Authorization. Instance must be instantiated with code and redirecturi.
-
+        
         url = "https://api.spotify.com/v1/me/playlists"
 
         response = self._apiQuery(url)

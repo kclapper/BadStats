@@ -40,7 +40,7 @@
       <h1>Top Tracks</h1>
     </header>
       <ol>
-      {% for track in stats['top-tracks'] %}
+      {% for track in stats['tracks'] %}
         <li>
           <a href="{{ url_for('stats.item', kind='song', id=track['id']) }}">
             {{ track['name'] }} 
