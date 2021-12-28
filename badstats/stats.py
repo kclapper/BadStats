@@ -89,13 +89,7 @@ def userPlaylistPlot(id, kind):
     spotify = UserSpotify(session['id'])
 
     response = spotify.getPlaylist(id)
-    tracks = []
-    for track in response['tracks']['items']:
-        trackstats = spotify.song(track['track']['id'])
-        tracks.append({
-            'name': trackstats['name'],
-            kind: trackstats[kind]
-        })
+    tracks = spotify.multipleSongDetails([track['track']['id'] for track in response['tracks']['items']])
     
     fig_data = plot.playlist(kind, tracks, response['name'])
 

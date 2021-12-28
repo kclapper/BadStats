@@ -44,6 +44,7 @@ def test_public_spotify_item(app, kind, item, expected):
     ("artist", ["74XFHRwlV6OrjEM0A2NCMF", "1XpDYCrUJnvCo9Ez6yeMWh", "1gUi2utSbJLNPddYENJAp4"]),
     ("album", ["4sgYpkIASM1jVlNC8Wp9oF", "4UdZHRBCIoe7XCPr8KdVg7", "1AckkxSo39144vOBrJ1GkS"]),
     ("song", ["1j8z4TTjJ1YOdoFEDwJTQa", "0G2wimhVoDYXbQ6csDxtSf", "6crBy2sODw2HS53xquM6us"]),
+    ("song", ["1j8z4TTjJ1YOdoFEDwJTQa"]),
 ))
 def test_public_spotify_item(app, kind, items):
     with app.app_context():
@@ -51,12 +52,23 @@ def test_public_spotify_item(app, kind, items):
 
         result = spotify.multipleItems(kind, items)
 
+@pytest.mark.parametrize('items', (
+    (["1j8z4TTjJ1YOdoFEDwJTQa", "0G2wimhVoDYXbQ6csDxtSf", "6crBy2sODw2HS53xquM6us"]),
+    (["1j8z4TTjJ1YOdoFEDwJTQa"]),
+))
+def test_public_spotify_item(app, items):
+    with app.app_context():
+        spotify = Spotify()
+
+        result = spotify.multipleSongDetails(items)
+
 def test_public_spotify_albumtrackdetails(app):
     with app.app_context():
         spotify = Spotify()
 
         results = spotify.albumTrackDetails("4sgYpkIASM1jVlNC8Wp9oF")
 
+        assert "Paramore" == results['album']
         assert "Ain't It Fun" in [result['name'] for result in results['tracks']]
 
 @pytest.mark.parametrize('statusCode', (

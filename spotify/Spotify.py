@@ -1,8 +1,5 @@
-import json, requests, base64, os, re, logging
-from datetime import datetime, timedelta
-
 from flask import current_app
-from spotify.Token import BasicCreds, UserCreds, UserToken
+from spotify.Token import BasicCreds, UserCreds
 
 from badstats.db import get_db
 
@@ -14,7 +11,6 @@ class Spotify:
         self._token = BasicCreds()
 
     def _apiQuery(self, url, params=None):
-        # Format and send request
         headers = {
             'Authorization': f'Bearer {self._token.value()}'
         }
@@ -73,9 +69,9 @@ class Spotify:
     def multipleItems(self, kind, ids):
 
         resourceMap = {
-            "artist": ("artists", 50),#, f'https://api.spotify.com/v1/artists/{id}/top-tracks', {'market': 'US'}),
-            "album": ("albums", 20),#, False, None),
-            "song": ("tracks", 20),#, f'https://api.spotify.com/v1/audio-features/{id}', None),
+            "artist": ("artists", 50),
+            "album": ("albums", 20),
+            "song": ("tracks", 50),
         }
         resource = resourceMap[kind]
 
@@ -84,10 +80,28 @@ class Spotify:
             'ids': ",".join(ids),
             'market': 'US',
         }
-        response = self._apiQuery(url, params=params)
+        response = self._apiQuery(url, params=params)[resource[0]]
 
-        return response[resource[0]]
+        return response
         
+    def multipleSongDetails(self, ids):
+
+        url = f'https://api.spotify.com/v1/audio-features'
+        params = {
+            'ids': ",".join(ids),
+            'market': 'US',
+        }
+        audioFeatures = self._apiQuery(url, params=params)["audio_features"]
+
+        tracks = self.multipleItems("song", ids)
+
+        for track in tracks:
+            for feature in audioFeatures:
+                if track['id'] == feature['id']:
+                    track.update(feature)
+
+        return tracks
+
     def albumTrackDetails(self, id):
         album = self.item('album', id)
 
@@ -97,7 +111,7 @@ class Spotify:
         album['tracks']['items'].sort(key=trackSort)
         tracks = {
             'album': album['name'],
-            'tracks': self.multipleItems("song", [song['id'] for song in album['tracks']['items']])
+            'tracks': self.multipleSongDetails([song['id'] for song in album['tracks']['items']])
             }
      
         return tracks
