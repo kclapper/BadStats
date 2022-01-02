@@ -59,7 +59,7 @@ def item(kind, id):
 def plotPNG(kind, id):
     spotify = Spotify()
     tracks = spotify.albumTrackDetails(id)
-    fig_data = plot.album(kind, tracks, regions=['US'])
+    fig_data = plot.album(kind, tracks)
         
     return render_template('stats/plot.html', result=fig_data.decode('utf-8'))
 
