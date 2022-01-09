@@ -9,9 +9,10 @@ def create_app(test_config=None):
 
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
+    database = os.path.join(app.instance_path, 'badstats.sqlite')
     app.config.from_mapping(
         SECRET_KEY=os.environ["FLASK_SECRET"],
-        DATABASE=os.path.join(app.instance_path, 'badstats.sqlite'),
+        DATABASE=database,
     )
 
     if test_config is None:
@@ -28,6 +29,8 @@ def create_app(test_config=None):
         pass
 
     from . import db
+    if not os.path.exists(database):
+        db.init_db()
     db.init_app(app)
 
     from . import auth

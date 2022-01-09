@@ -14,16 +14,16 @@ spec:
       labels:
         app: badstats
     spec:
-      topologySpreadConstraints:
-      - maxSkew: 1
-        topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: ScheduleAnyway
-        labelSelector:
-          matchLabels:
-            app: badstats
+      # topologySpreadConstraints:
+      # - maxSkew: 1
+      #   topologyKey: kubernetes.io/hostname
+      #   whenUnsatisfiable: ScheduleAnyway
+      #   labelSelector:
+      #     matchLabels:
+      #       app: badstats
       containers:
         - name: badstats
-          image: kpuc1997/badstats:1.1.3
+          image: ghcr.io/kclapper/badstats:1.1.3
           imagePullPolicy: IfNotPresent
           resources:
             limits:
