@@ -30,7 +30,8 @@ def create_app(test_config=None):
 
     from . import db
     if not os.path.exists(database):
-        db.init_db()
+        with app.app_context():
+            db.init_db()
     db.init_app(app)
 
     from . import auth

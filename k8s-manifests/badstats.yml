@@ -23,7 +23,7 @@ spec:
       #       app: badstats
       containers:
         - name: badstats
-          image: ghcr.io/kclapper/badstats:1.1.3
+          image: ghcr.io/kclapper/badstats:v1.2.1
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -55,6 +55,8 @@ spec:
           volumeMounts:
             - mountPath: /usr/src/app/instance
               name: data
+      imagePullSecrets:
+        - name: regcred
       volumes:
         - name: data
           persistentVolumeClaim:
