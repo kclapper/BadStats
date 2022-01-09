@@ -5,9 +5,9 @@ metadata:
   name: db-pvc
   namespace: badstats
 spec:
-  storageClassName: longhorn
+  storageClassName: linode-block-storage
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 4Gi
+      storage: 10Gi
