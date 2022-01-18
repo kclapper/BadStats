@@ -3,9 +3,9 @@ FROM python:3
 WORKDIR /usr/src/app
 
 COPY badstats/ badstats/
-COPY requirements-prod.txt .
+COPY requirements.txt .
 
-RUN pip install -r requirements-prod.txt
+RUN pip install -r requirements.txt
 
 # Expects three environment variables:
 # CLIENTID - for Spotify
