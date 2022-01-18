@@ -13,6 +13,8 @@ def create_app(test_config=None):
     app.config.from_mapping(
         SECRET_KEY=os.environ["FLASK_SECRET"],
         DATABASE=database,
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_SAMESITE='Strict'
     )
 
     if test_config is None:
@@ -40,6 +42,22 @@ def create_app(test_config=None):
     from . import stats
     app.register_blueprint(stats.bp)
     app.add_url_rule('/', endpoint='index')
+
+    @app.after_request
+    def setSecureHeaders(response):
+        headers = {
+            'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+            'Content-Security-Policy': "default-src 'self'; script-src 'self';\
+                img-src 'self' https://*.scdn.co data: ;",
+            'X-Content-Type-Options': 'nosniff',
+            'X-Frame-Options': 'SAMEORIGIN',
+
+
+        }
+
+        response.headers.update(headers)
+
+        return response
 
     return app
 
