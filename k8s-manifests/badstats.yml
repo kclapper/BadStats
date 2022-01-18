@@ -23,7 +23,7 @@ spec:
       #       app: badstats
       containers:
         - name: badstats
-          image: ghcr.io/kclapper/badstats:v1.2.1
+          image: ghcr.io/kclapper/badstats:v1.2.2
           imagePullPolicy: IfNotPresent
           resources:
             limits:
