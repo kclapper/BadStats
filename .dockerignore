@@ -2,5 +2,6 @@ instance/
 venv/
 .env
 .gitignore
-LICENSE
-start.sh
+README.md
+.pytest_cache
+.github
