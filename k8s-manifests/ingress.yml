@@ -1,26 +1,13 @@
 ---
-# Redirect to https
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: https-redirect
-  namespace: badstats
-spec:
-  redirectScheme:
-    scheme: https
-    port: "443"
-    permanent: true
-
----
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: badstats
   namespace: badstats
   annotations:
-    kubernetes.io/ingress.class: traefik
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.middlewares: badstats-https-redirect@kubernetescrd
 spec:
   tls:
   - hosts:
