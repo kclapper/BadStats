@@ -14,13 +14,6 @@ spec:
       labels:
         app: badstats
     spec:
-      # topologySpreadConstraints:
-      # - maxSkew: 1
-      #   topologyKey: kubernetes.io/hostname
-      #   whenUnsatisfiable: ScheduleAnyway
-      #   labelSelector:
-      #     matchLabels:
-      #       app: badstats
       containers:
         - name: badstats
           image: ghcr.io/kclapper/badstats:v1.2.2
@@ -28,10 +21,10 @@ spec:
           resources:
             limits:
               memory: "300Mi"
-              cpu: "500m"
+              cpu: "250m"
             requests:
-              memory: "50Mi"
-              cpu: "200m"
+              memory: "80Mi"
+              cpu: "50m"
           ports:
             - containerPort: 8080
           env:

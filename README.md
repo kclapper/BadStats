@@ -1,6 +1,7 @@
 # Bad Stats
 
-A web app for exploring spotify api data based on flask and matplotlib.
+A web app for exploring spotify api data based on flask and matplotlib. Based
+on the [Flaskr Flask tutorial](https://flask.palletsprojects.com/en/2.0.x/tutorial/) by Pallets.
 
 ## Development
 
