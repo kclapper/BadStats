@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 
 {% block header %}
-  {% if stats['images'][0] %}
-    <img class='detailPic' src="{{ stats['images'][0]['url'] }}" />
+  {% if stats['album']['images'][0] %}
+    <img class='detailPic' src="{{ stats['album']['images'][0]['url'] }}" />
   {% endif %}
   <h1 style='padding-left: 5px; margin-top: auto; margin-bottom: auto;'>{% block title %}{{ stats['name'] }}{% endblock %}</h1>
 {% endblock %}

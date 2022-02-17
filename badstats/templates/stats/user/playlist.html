@@ -27,7 +27,7 @@
         <header>
             <h1>Owner</h1>
         </header>
-        {{ stats['owner'] }}
+        {{ stats['owner']['display_name'] }}
     </article>
     <hr>
 
@@ -35,7 +35,7 @@
     <header>
       <h1>Followers</h1>
     </header>
-    {{ stats['followers'] }}
+    {{ stats['followers']['total'] }}
   </article>
   <hr>
 
@@ -44,19 +44,19 @@
       <h1>Tracks</h1>
     </header>
       <ol>
-      {% for track in stats['tracks'] %}
-        <li><a href="{{ url_for('stats.item', kind='song', id=track['id']) }}">
-          {{ track['name'] }}
+      {% for track in stats['tracks']['items'] %}
+        <li><a href="{{ url_for('stats.item', kind='song', id=track['track']['id']) }}">
+          {{ track['track']['name'] }}
         </a> 
-        {% if track['artists'] %}
+        {% if track['track']['album']['artists'] %}
             by 
-            <a href="{{ url_for('stats.item', kind='artist', id=track['artists'][0]['id']) }}">
-                {{ track['artists'][0]['name'] }}
+            <a href="{{ url_for('stats.item', kind='artist', id=track['track']['album']['artists'][0]['id']) }}">
+                {{ track['track']['album']['artists'][0]['name'] }}
             </a>
         {% endif %}
         off 
-        <a href="{{ url_for('stats.item', kind='album', id=track['albumid']) }}">
-            {{ track['albumname'] }}
+        <a href="{{ url_for('stats.item', kind='album', id=track['track']['album']['id']) }}">
+            {{ track['track']['album']['name'] }}
         </a>
         </li>
       {% endfor %}
@@ -66,7 +66,7 @@
 
   <article class='post'>
     <header>
-      <h1>Album Plots</h1>
+      <h1>Playlist Plots</h1>
     </header>
     <a href="{{ url_for('stats.userPlaylistPlot', kind='popularity', id=stats['id']) }}" >Popularity Plot</a>
     <br />

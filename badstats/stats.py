@@ -1,12 +1,13 @@
 from flask import (
     Blueprint, render_template, request, redirect, url_for, g, current_app, session
 )
+from flask.wrappers import Response
 from werkzeug.exceptions import abort
 import logging
 from datetime import datetime, timedelta
 from badstats.db import get_db
 
-from badstats.spotify import PublicSpotify, UserSpotify
+from spotify.Spotify import Spotify, UserSpotify
 from badstats import getHostname
 import badstats.plot as plot
 from badstats.auth import withValidSession
@@ -30,7 +31,7 @@ def search(kind):
     if kind not in ['artist', 'album', 'song']:
         return render_template('stats/index.html')
     if request.method == 'POST' and request.form['search']:
-        spotify = PublicSpotify()
+        spotify = Spotify()
         results = spotify.search(request.form['search'], kind)
 
         if not results:
@@ -46,7 +47,7 @@ def item(kind, id):
     if not id:
         return render_template('stats/index.html')
     
-    spotify = PublicSpotify()
+    spotify = Spotify()
     result = spotify.item(kind, id)
 
     if not result:
@@ -56,9 +57,9 @@ def item(kind, id):
 
 @bp.route('/plot/album/<kind>/<id>')
 def plotPNG(kind, id):
-    spotify = PublicSpotify()
+    spotify = Spotify()
     tracks = spotify.albumTrackDetails(id)
-    fig_data = plot.album(kind, tracks, regions=['US'])
+    fig_data = plot.album(kind, tracks)
         
     return render_template('stats/plot.html', result=fig_data.decode('utf-8'))
 
@@ -87,18 +88,10 @@ def userItem(kind, id):
 def userPlaylistPlot(id, kind):
     spotify = UserSpotify(session['id'])
 
-    results = spotify.getPlaylist(id)
-    tracks = []
-    for track in results['tracks']:
-        trackstats = spotify.song(track['id'])
-        tracks.append({
-            'name': trackstats['name'],
-            kind: trackstats[kind]
-        })
+    response = spotify.getPlaylist(id)
+    tracks = spotify.multipleSongDetails([track['track']['id'] for track in response['tracks']['items']])
     
-    fig_data = plot.playlist(kind, tracks, results['name'])
-
-
+    fig_data = plot.playlist(kind, tracks, response['name'])
 
     return render_template(f'stats/user/playlistPlot.html', result=fig_data.decode('utf-8'))
     

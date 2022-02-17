@@ -5,9 +5,9 @@ metadata:
   name: db-pvc
   namespace: badstats
 spec:
-  storageClassName: linode-block-storage
+  storageClassName: nfs-client
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
-      storage: 10Gi
+      storage: 1Gi
