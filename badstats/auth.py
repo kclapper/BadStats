@@ -3,7 +3,8 @@ from secrets import token_urlsafe
 from datetime import datetime, timedelta
 
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for, current_app
+    Blueprint, flash, g, redirect, render_template, request, session, url_for, 
+    current_app
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -13,39 +14,31 @@ from spotify.Spotify import UserSpotify
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-# log = logging.getLogger('badstats')
-
 def issueCsrf():
-    csrf = token_urlsafe()
+    csrfToken = token_urlsafe()
+
     db = get_db()
     db.execute(
         'INSERT INTO csrf (token, created) VALUES (?, ?);',
-        (csrf, datetime.utcnow().isoformat())
+        (csrfToken, datetime.utcnow().isoformat())
     )
     db.commit()
-    return csrf
+
+    return csrfToken
 
 def isValid(csrf):
-    # Return True if csrf is valid
-    # Return False if not
-    
-    # Return false if no csrf given
     if not csrf:
         return False
 
-    # Check if a matching csrf token is in the database
     db = get_db()
     token = db.execute("SELECT * FROM csrf WHERE token = ?", (csrf,)).fetchone()
 
-    # If no token was found then the csrf token is invalid
     if not token:
         return False
-    # Otherwise a token was found that matches
 
-    # Determine when the csrf token expires
-    tokenexpires = datetime.fromisoformat(token["created"]) + timedelta(minutes=2) 
+    tokenexpires = datetime.fromisoformat(token["created"]) \
+        + timedelta(minutes=2) 
 
-    # If it's past it's expiration date, delete form database and return False
     if datetime.utcnow() >= tokenexpires:
         db.execute('DELETE FROM csrf WHERE token = ?', (csrf,))
         db.commit()
@@ -56,33 +49,21 @@ def isValid(csrf):
 
 @bp.route('/spotify/authorize/<kind>', methods=['POST', 'GET'])
 def userAuth(kind):
-
-    # Make sure it's a valid kind and set necessary authorization scope
-    if kind == "playlist":
-        scope = "playlist-read-private"
-    else:
-        # Only handling playlists right now
+    if kind != "playlist":
         return redirect( url_for('stats.search', kind='artist', results=''))
 
     if request.method == "GET":
         return render_template("auth/user.html", kind=kind, csrf=issueCsrf())
-        
 
-    # Make sure request has a valid csrf token
     csrf = request.form['csrf']
     if not isValid(csrf):
         print("CSRF not valid, redirecting to index")
         return redirect( url_for('stats.search', kind='artist', results=''))
 
-    # Determine redirect uri
     redirecturi = f'{getHostname()}{url_for("auth.receiveAuth", kind=kind)}'
-
-    # Get spotify api client id from environment variable
     client_id = os.environ['CLIENTID']
-
-    # Always ask for authentication
     show_dialog = 'true'
-
+    scope = "playlist-read-private"
     params = {
         'client_id': client_id,
         'scope': scope,
@@ -93,15 +74,14 @@ def userAuth(kind):
     }
     url = "https://accounts.spotify.com/authorize"
     
-    # See if there's any errors by sending the request once first
     response = requests.get(url, params=params)
 
     if response.status_code >= 300:
-        current_app.logger.warning(f"Spotify user auth redirect error, status code: {response.status_code}")
+        current_app.logger.warning(f"Spotify user auth redirect error, \
+            status code: {response.status_code}")
         current_app.logger.warning(response.json()['error'])
         return redirect(url_for('stats.index'))
     
-    # If no errors, redirect to that same url
     req = requests.Request("GET", url, params=params).prepare()
     return redirect(f'https://accounts.spotify.com{req.path_url}')
     
